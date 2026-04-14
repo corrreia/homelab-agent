@@ -13,7 +13,12 @@ const getSession = createServerFn({ method: 'GET' }).handler(async () => {
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    if (location.pathname === '/login' || location.pathname.startsWith('/api/')) {
+    if (
+      location.pathname === '/login' ||
+      location.pathname === '/mcp' ||
+      location.pathname.startsWith('/api/') ||
+      location.pathname.startsWith('/.well-known/')
+    ) {
       return { session: null }
     }
     const session = await getSession()

@@ -10,11 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SourcesSlugRouteImport } from './routes/sources/$slug'
 import { Route as ApiSpecRouteImport } from './routes/api/spec'
-import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiSourcesIndexRouteImport } from './routes/api/sources/index'
 import { Route as ApiSourcesSlugRouteImport } from './routes/api/sources/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -23,6 +23,11 @@ import { Route as ApiProxySlugSplatRouteImport } from './routes/api/proxy/$slug/
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -43,11 +48,6 @@ const SourcesSlugRoute = SourcesSlugRouteImport.update({
 const ApiSpecRoute = ApiSpecRouteImport.update({
   id: '/api/spec',
   path: '/api/spec',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMcpRoute = ApiMcpRouteImport.update({
-  id: '/api/mcp',
-  path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSourcesIndexRoute = ApiSourcesIndexRouteImport.update({
@@ -74,8 +74,8 @@ const ApiProxySlugSplatRoute = ApiProxySlugSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/status': typeof StatusRoute
-  '/api/mcp': typeof ApiMcpRoute
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -86,8 +86,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/status': typeof StatusRoute
-  '/api/mcp': typeof ApiMcpRoute
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -99,8 +99,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/status': typeof StatusRoute
-  '/api/mcp': typeof ApiMcpRoute
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -113,8 +113,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/mcp'
     | '/status'
-    | '/api/mcp'
     | '/api/spec'
     | '/sources/$slug'
     | '/api/auth/$'
@@ -125,8 +125,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/mcp'
     | '/status'
-    | '/api/mcp'
     | '/api/spec'
     | '/sources/$slug'
     | '/api/auth/$'
@@ -137,8 +137,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/mcp'
     | '/status'
-    | '/api/mcp'
     | '/api/spec'
     | '/sources/$slug'
     | '/api/auth/$'
@@ -150,8 +150,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   StatusRoute: typeof StatusRoute
-  ApiMcpRoute: typeof ApiMcpRoute
   ApiSpecRoute: typeof ApiSpecRoute
   SourcesSlugRoute: typeof SourcesSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -167,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -195,13 +202,6 @@ declare module '@tanstack/react-router' {
       path: '/api/spec'
       fullPath: '/api/spec'
       preLoaderRoute: typeof ApiSpecRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mcp': {
-      id: '/api/mcp'
-      path: '/api/mcp'
-      fullPath: '/api/mcp'
-      preLoaderRoute: typeof ApiMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sources/': {
@@ -238,8 +238,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   StatusRoute: StatusRoute,
-  ApiMcpRoute: ApiMcpRoute,
   ApiSpecRoute: ApiSpecRoute,
   SourcesSlugRoute: SourcesSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

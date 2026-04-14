@@ -17,7 +17,7 @@ const getStatus = createServerFn({ method: 'GET' }).handler(async () => {
     sourceCount: sources.length,
     pathCount,
     errors,
-    mcpPath: '/api/mcp',
+    mcpPath: '/mcp',
     port: Number(process.env.PORT ?? 3000),
   }
 })

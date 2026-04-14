@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { withMcpAuth } from 'better-auth/plugins'
-import { auth } from '../../lib/auth'
-import { buildMcpServer } from '../../lib/mcp-server'
+import { auth } from '../lib/auth'
+import { buildMcpServer } from '../lib/mcp-server'
 
 const transports = new Map<string, WebStandardStreamableHTTPServerTransport>()
 
@@ -36,7 +36,7 @@ const handleMcpRequest = withMcpAuth(auth, async (request) => {
   return transport.handleRequest(request)
 })
 
-export const Route = createFileRoute('/api/mcp')({
+export const Route = createFileRoute('/mcp')({
   server: {
     handlers: {
       GET: ({ request }) => handleMcpRequest(request),

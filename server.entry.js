@@ -69,6 +69,14 @@ const srv = serve({
       if (res) return res
     }
 
+    // RFC 9728 / RFC 8414 well-known endpoints live under Better Auth's
+    // basePath; rewrite the top-level path to the /api/auth/ prefix.
+    if (url.pathname.startsWith('/.well-known/')) {
+      const rewritten = new URL(request.url)
+      rewritten.pathname = '/api/auth' + url.pathname
+      return server.fetch(new Request(rewritten, request))
+    }
+
     // Fall through to SSR handler
     return server.fetch(request)
   },
