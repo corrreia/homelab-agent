@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "homelab-agent": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp"
+    }
+  }
+}
