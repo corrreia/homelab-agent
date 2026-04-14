@@ -1,13 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { readConfig } from '../../../../lib/config'
-import { findSource, proxyRequest } from '../../../../lib/proxy'
+import { proxyRequest } from '../../../../lib/proxy'
+import { getSource } from '../../../../lib/sources-repo'
 
 export const Route = createFileRoute('/api/proxy/$slug/$')({
   server: {
     handlers: {
       ANY: async ({ request, params }) => {
-        const config = await readConfig()
-        const source = findSource(config, params.slug)
+        const source = await getSource(params.slug)
         if (!source) {
           return Response.json({ error: `Unknown source: ${params.slug}` }, { status: 404 })
         }

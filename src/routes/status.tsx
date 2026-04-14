@@ -1,24 +1,24 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getCombinedSpec, getErrors, buildMcpServer } from '../lib/mcp-server'
-import { readConfig } from '../lib/config'
+import { getSources } from '../lib/sources-repo'
 import { colors, fonts } from '../styles'
 
 let initialized = false
 
 const getStatus = createServerFn({ method: 'GET' }).handler(async () => {
-  const config = await readConfig()
+  const sources = await getSources()
   const spec = getCombinedSpec()
   const errors = getErrors()
   const pathCount = spec ? Object.keys((spec.paths as Record<string, unknown>) ?? {}).length : 0
 
   return {
     initialized,
-    sourceCount: config.sources.length,
+    sourceCount: sources.length,
     pathCount,
     errors,
-    mcpPath: config.server.mcpPath,
-    port: config.server.port,
+    mcpPath: '/api/mcp',
+    port: Number(process.env.PORT ?? 3000),
   }
 })
 

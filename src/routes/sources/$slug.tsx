@@ -1,24 +1,18 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { readConfig, writeConfig, type Source } from '../../lib/config'
-import { withInferredApiBasePath } from '../../lib/source-spec'
+import { type Source } from '../../lib/config'
+import { getSource as repoGetSource, updateSource as repoUpdateSource } from '../../lib/sources-repo'
 import { templates } from '../../lib/templates'
 import { colors, fonts } from '../../styles'
 
 const getSource = createServerFn({ method: 'GET' }).handler(async ({ data }: { data: { slug: string } }) => {
-  const config = await readConfig()
-  return config.sources.find((s) => s.slug === data.slug) ?? null
+  return repoGetSource(data.slug)
 })
 
 const updateSource = createServerFn({ method: 'POST' }).handler(
   async ({ data }: { data: { slug: string; source: Source } }) => {
-    const config = await readConfig()
-    const idx = config.sources.findIndex((s) => s.slug === data.slug)
-    if (idx === -1) throw new Error('Source not found')
-    config.sources[idx] = await withInferredApiBasePath({ ...data.source, slug: data.slug })
-    await writeConfig(config)
-    return config.sources[idx]
+    return repoUpdateSource(data.slug, data.source)
   },
 )
 

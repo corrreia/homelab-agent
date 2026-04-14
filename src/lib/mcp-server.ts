@@ -4,8 +4,9 @@ import type { RequestOptions } from '@cloudflare/codemode/mcp'
 import { NodeVmExecutor } from './node-vm-executor'
 import { mergeSpecs } from './spec-merger'
 import { getCachedMergedSpec, setCachedMergedSpec } from './spec-cache'
-import { readConfig, type Config, type Source } from './config'
-import { findSource, getSourceBasePath } from './proxy'
+import { type Source } from './config'
+import { getSourceBasePath } from './proxy'
+import { getSource, getSources } from './sources-repo'
 import { loggedFetch } from './fetch'
 
 function getAuthHeaders(source: Source): Record<string, string> {
@@ -23,13 +24,13 @@ function getAuthHeaders(source: Source): Record<string, string> {
   }
 }
 
-async function makeRequest(config: Config, options: RequestOptions): Promise<unknown> {
+async function makeRequest(options: RequestOptions): Promise<unknown> {
   // Extract slug from the path (first segment)
   const pathParts = options.path.split('/').filter(Boolean)
   const slug = pathParts[0]
   const restPath = '/' + pathParts.slice(1).join('/')
 
-  const source = findSource(config, slug!)
+  const source = await getSource(slug!)
   if (!source) {
     throw new Error(`Unknown source: ${slug}`)
   }
@@ -71,20 +72,21 @@ async function makeRequest(config: Config, options: RequestOptions): Promise<unk
 }
 
 export async function buildMcpServer(): Promise<McpServer> {
-  const config = await readConfig()
   const executor = new NodeVmExecutor()
 
   let merged = getCachedMergedSpec()
   if (!merged) {
-    const proxyBaseUrl = `http://localhost:${config.server.port}`
-    merged = await mergeSpecs(config.sources, proxyBaseUrl)
+    const port = Number(process.env.PORT ?? 3000)
+    const proxyBaseUrl = `http://localhost:${port}`
+    const sources = await getSources()
+    merged = await mergeSpecs(sources, proxyBaseUrl)
     setCachedMergedSpec(merged)
   }
 
   const server = openApiMcpServer({
     spec: merged.spec,
     executor,
-    request: (options) => makeRequest(config, options),
+    request: makeRequest,
     name: 'homelab-agent',
     version: '0.1.0',
     description: 'Combined API gateway exposing multiple OpenAPI services',

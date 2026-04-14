@@ -52,7 +52,7 @@ async function handleStatic(pathname) {
   }
 }
 
-serve({
+const srv = serve({
   port: Number(process.env.PORT || 3000),
   async fetch(request) {
     const url = new URL(request.url)
@@ -67,3 +67,6 @@ serve({
     return server.fetch(request)
   },
 })
+
+await srv.ready()
+console.log(`[server] listening on http://localhost:${process.env.PORT || 3000}`)

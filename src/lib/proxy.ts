@@ -1,9 +1,5 @@
-import type { Config, Source } from './config'
+import type { Source } from './config'
 import { loggedFetch } from './fetch'
-
-export function findSource(config: Config, slug: string): Source | undefined {
-  return config.sources.find((s) => s.slug === slug)
-}
 
 export function getSourceBasePath(source: Source): string {
   if (source.apiBasePath) return source.apiBasePath

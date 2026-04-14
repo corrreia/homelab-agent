@@ -1,41 +1,32 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { readConfig, writeConfig, type Source } from '../../../lib/config'
-import { withInferredApiBasePath } from '../../../lib/source-spec'
+import { type Source } from '../../../lib/config'
+import { deleteSource, getSource, updateSource } from '../../../lib/sources-repo'
 
 export const Route = createFileRoute('/api/sources/$slug')({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        const config = await readConfig()
-        const source = config.sources.find((s) => s.slug === params.slug)
+        const source = await getSource(params.slug)
         if (!source) {
           return Response.json({ error: 'Source not found' }, { status: 404 })
         }
         return Response.json(source)
       },
       PUT: async ({ request, params }) => {
-        const updates = (await request.json()) as Partial<Source>
-        const config = await readConfig()
-        const idx = config.sources.findIndex((s) => s.slug === params.slug)
-        if (idx === -1) {
+        const existing = await getSource(params.slug)
+        if (!existing) {
           return Response.json({ error: 'Source not found' }, { status: 404 })
         }
-        config.sources[idx] = await withInferredApiBasePath({
-          ...config.sources[idx]!,
-          ...updates,
-          slug: params.slug,
-        })
-        await writeConfig(config)
-        return Response.json(config.sources[idx])
+        const updates = (await request.json()) as Partial<Source>
+        const updated = await updateSource(params.slug, { ...existing, ...updates, slug: params.slug })
+        return Response.json(updated)
       },
       DELETE: async ({ params }) => {
-        const config = await readConfig()
-        const idx = config.sources.findIndex((s) => s.slug === params.slug)
-        if (idx === -1) {
+        const existing = await getSource(params.slug)
+        if (!existing) {
           return Response.json({ error: 'Source not found' }, { status: 404 })
         }
-        config.sources.splice(idx, 1)
-        await writeConfig(config)
+        await deleteSource(params.slug)
         return Response.json({ ok: true })
       },
     },

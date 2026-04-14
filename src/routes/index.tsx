@@ -1,32 +1,32 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { readConfig, writeConfig, type Source } from '../lib/config'
-import { withInferredApiBasePath } from '../lib/source-spec'
+import { type Source } from '../lib/config'
+import {
+  addSource as repoAddSource,
+  deleteSource as repoDeleteSource,
+  getSources as repoGetSources,
+  sourceExists,
+} from '../lib/sources-repo'
 import { templates, type ServiceTemplate } from '../lib/templates'
 import { testServiceConnection, type TestResult } from '../lib/test-connection'
 import { colors, fonts } from '../styles'
 
 const getSources = createServerFn({ method: 'GET' }).handler(async () => {
-  const config = await readConfig()
-  return config.sources
+  return repoGetSources()
 })
 
 const addSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: Source }) => {
-  const config = await readConfig()
-  if (config.sources.some((s) => s.slug === data.slug)) {
+  if (await sourceExists(data.slug)) {
     throw new Error(`Source "${data.slug}" already exists`)
   }
-  config.sources.push(await withInferredApiBasePath(data))
-  await writeConfig(config)
-  return config.sources
+  await repoAddSource(data)
+  return repoGetSources()
 })
 
 const deleteSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
-  const config = await readConfig()
-  config.sources = config.sources.filter((s) => s.slug !== data.slug)
-  await writeConfig(config)
-  return config.sources
+  await repoDeleteSource(data.slug)
+  return repoGetSources()
 })
 
 const testConnection = createServerFn({ method: 'POST' }).handler(
