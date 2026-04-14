@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - '3000:3000'
+    env_file:
+      - .env
     environment:
       # TODO: early-dev — disables TLS verification on every outbound fetch.
       # Remove before any non-dev use and gate on per-source `allowInvalidTls`.

@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { genericOAuth } from 'better-auth/plugins'
+import { genericOAuth, mcp } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { db } from '../db'
 
@@ -29,6 +29,9 @@ export const auth = betterAuth({
           pkce: true,
         },
       ],
+    }),
+    mcp({
+      loginPage: '/login',
     }),
     tanstackStartCookies(),
   ],

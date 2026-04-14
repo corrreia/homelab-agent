@@ -15,6 +15,13 @@
       "when": 1776168713362,
       "tag": "0001_stormy_sue_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776169499019,
+      "tag": "0002_complex_gauntlet",
+      "breakpoints": true
     }
   ]
 }
