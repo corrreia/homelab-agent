@@ -3,10 +3,23 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 import { serve } from 'srvx'
-import { readFile } from 'node:fs/promises'
-import { join, extname } from 'node:path'
+import { readFile, mkdir } from 'node:fs/promises'
+import { join, extname, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import server from './dist/server/server.js'
+
+const DB_PATH = join(process.cwd(), 'data', 'app.db')
+const MIGRATIONS_PATH = join(process.cwd(), 'data', 'migrations')
+
+await mkdir(dirname(DB_PATH), { recursive: true })
+const sqlite = new Database(DB_PATH)
+sqlite.pragma('journal_mode = WAL')
+migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_PATH })
+sqlite.close()
+console.log('[db] migrations applied')
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const clientDir = join(__dirname, 'dist', 'client')

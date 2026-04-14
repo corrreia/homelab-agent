@@ -8,4 +8,5 @@ dist/
 .env
 .env.local
 .env.*.local
-data/
+data/*
+!data/migrations/
