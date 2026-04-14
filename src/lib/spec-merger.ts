@@ -1,7 +1,7 @@
 import type { Source } from './config'
 import { fetchOpenApiSpec } from './source-spec'
 
-interface MergeResult {
+export interface MergeResult {
   spec: Record<string, unknown>
   errors: Array<{ slug: string; error: string }>
 }

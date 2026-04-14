@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { invalidateMergedSpecCache } from './spec-cache'
 
 export interface AuthConfig {
   type: 'bearer' | 'header' | 'none'
@@ -54,4 +55,5 @@ export async function readConfig(): Promise<Config> {
 export async function writeConfig(config: Config): Promise<void> {
   await mkdir(dirname(CONFIG_PATH), { recursive: true })
   await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n')
+  invalidateMergedSpecCache()
 }

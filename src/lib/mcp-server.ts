@@ -3,12 +3,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { RequestOptions } from '@cloudflare/codemode/mcp'
 import { NodeVmExecutor } from './node-vm-executor'
 import { mergeSpecs } from './spec-merger'
+import { getCachedMergedSpec, setCachedMergedSpec } from './spec-cache'
 import { readConfig, type Config, type Source } from './config'
 import { findSource, getSourceBasePath } from './proxy'
 import { loggedFetch } from './fetch'
-
-let currentSpec: Record<string, unknown> | null = null
-let lastErrors: Array<{ slug: string; error: string }> = []
 
 function getAuthHeaders(source: Source): Record<string, string> {
   switch (source.auth.type) {
@@ -76,14 +74,15 @@ export async function buildMcpServer(): Promise<McpServer> {
   const config = await readConfig()
   const executor = new NodeVmExecutor()
 
-  const proxyBaseUrl = `http://localhost:${config.server.port}`
-  const { spec, errors } = await mergeSpecs(config.sources, proxyBaseUrl)
-
-  currentSpec = spec
-  lastErrors = errors
+  let merged = getCachedMergedSpec()
+  if (!merged) {
+    const proxyBaseUrl = `http://localhost:${config.server.port}`
+    merged = await mergeSpecs(config.sources, proxyBaseUrl)
+    setCachedMergedSpec(merged)
+  }
 
   const server = openApiMcpServer({
-    spec,
+    spec: merged.spec,
     executor,
     request: (options) => makeRequest(config, options),
     name: 'homelab-agent',
@@ -95,9 +94,9 @@ export async function buildMcpServer(): Promise<McpServer> {
 }
 
 export function getCombinedSpec(): Record<string, unknown> | null {
-  return currentSpec
+  return getCachedMergedSpec()?.spec ?? null
 }
 
 export function getErrors(): Array<{ slug: string; error: string }> {
-  return lastErrors
+  return getCachedMergedSpec()?.errors ?? []
 }
