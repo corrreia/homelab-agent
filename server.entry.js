@@ -1,3 +1,9 @@
+try {
+  process.loadEnvFile()
+} catch {
+  // No .env file — rely on real env vars.
+}
+
 // TODO: early-dev — disables TLS verification on every outbound fetch.
 // Remove before any non-dev use and gate on per-source `allowInvalidTls`.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'

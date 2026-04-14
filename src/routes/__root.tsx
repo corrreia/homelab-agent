@@ -1,8 +1,27 @@
 import type { ReactNode } from 'react'
-import { Outlet, createRootRoute, HeadContent, Scripts, Link } from '@tanstack/react-router'
+import { Outlet, createRootRoute, HeadContent, Scripts, Link, redirect } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { getRequestHeaders } from '@tanstack/react-start/server'
+import { auth } from '../lib/auth'
 import { colors, fonts } from '../styles'
 
+const getSession = createServerFn({ method: 'GET' }).handler(async () => {
+  const headers = new Headers(getRequestHeaders())
+  const session = await auth.api.getSession({ headers })
+  return session
+})
+
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    if (location.pathname === '/login' || location.pathname.startsWith('/api/')) {
+      return { session: null }
+    }
+    const session = await getSession()
+    if (!session) {
+      throw redirect({ to: '/login' })
+    }
+    return { session }
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

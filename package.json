@@ -19,6 +19,7 @@
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@tanstack/react-router": "^1.120.0",
     "@tanstack/react-start": "^1.120.0",
+    "better-auth": "^1.6.3",
     "better-sqlite3": "^12.9.0",
     "drizzle-orm": "^0.45.2",
     "js-yaml": "^4.1.1",
