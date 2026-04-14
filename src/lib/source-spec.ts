@@ -66,6 +66,17 @@ export async function fetchOpenApiSpec(
   throw lastError instanceof Error ? lastError : new Error(String(lastError))
 }
 
+function substituteServerVariables(url: string, variables: unknown): string {
+  if (!variables || typeof variables !== 'object') return url
+  return url.replace(/\{([^}]+)\}/g, (match, name) => {
+    const v = (variables as Record<string, unknown>)[name]
+    if (v && typeof v === 'object' && 'default' in v && typeof (v as { default: unknown }).default === 'string') {
+      return (v as { default: string }).default
+    }
+    return match
+  })
+}
+
 function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
   const servers = Array.isArray(spec.servers) ? spec.servers : []
   const firstServer = servers[0]
@@ -78,8 +89,11 @@ function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
     return undefined
   }
 
+  const variables = 'variables' in firstServer ? (firstServer as { variables: unknown }).variables : undefined
+  const resolvedUrl = substituteServerVariables(serverUrl, variables)
+
   try {
-    const parsed = new URL(serverUrl, 'http://localhost')
+    const parsed = new URL(resolvedUrl, 'http://localhost')
     const basePath = parsed.pathname.replace(/\/+$/, '')
     return basePath === '/' ? undefined : basePath
   } catch {

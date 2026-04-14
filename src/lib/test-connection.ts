@@ -57,7 +57,7 @@ export async function testServiceConnection(req: TestRequest): Promise<TestResul
 
 /** Build a TestRequest from a template and the user's per-instance values. */
 export function templateTestRequest(template: ServiceTemplate, baseUrl: string, token: string): TestRequest {
-  const prefix = template.publicPathPrefix ?? (template.id === 'seerr' ? '/api/v1' : '')
+  const prefix = template.publicPathPrefix ?? ''
   const auth: AuthConfig =
     template.authType === 'bearer'
       ? { type: 'bearer', token }
