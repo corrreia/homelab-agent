@@ -25,8 +25,18 @@ function createTransport(): WebStandardStreamableHTTPServerTransport {
 const handleMcpRequest = withMcpAuth(auth, async (request) => {
   const sessionId = request.headers.get('mcp-session-id') ?? undefined
 
-  if (sessionId && transports.has(sessionId)) {
-    const transport = transports.get(sessionId)!
+  if (sessionId) {
+    const transport = transports.get(sessionId)
+    if (!transport) {
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          error: { code: -32001, message: 'Session not found' },
+          id: null,
+        }),
+        { status: 404, headers: { 'content-type': 'application/json' } },
+      )
+    }
     return transport.handleRequest(request)
   }
 

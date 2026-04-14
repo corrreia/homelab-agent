@@ -58,7 +58,8 @@ export async function proxyRequest(source: Source, path: string, request: Reques
     { allowInvalidTls: source.allowInvalidTls },
   )
 
-  return new Response(res.body, {
+  const nullBody = res.status === 204 || res.status === 205 || res.status === 304
+  return new Response(nullBody ? null : res.body, {
     status: res.status,
     statusText: res.statusText,
     headers: filterResponseHeaders(res.headers),

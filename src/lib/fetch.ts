@@ -64,9 +64,11 @@ async function fetchWithOptionalInvalidTls(
           chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
         })
         res.on('end', () => {
+          const status = res.statusCode ?? 500
+          const nullBody = status === 204 || status === 205 || status === 304
           resolve(
-            new Response(Buffer.concat(chunks), {
-              status: res.statusCode ?? 500,
+            new Response(nullBody ? null : Buffer.concat(chunks), {
+              status,
               statusText: res.statusMessage ?? '',
               headers: toResponseHeaders(res.headers),
             }),
