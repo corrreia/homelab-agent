@@ -2,6 +2,8 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { type Source } from '../lib/config'
+import { ensureMergedSpec, getErrors } from '../lib/mcp-server'
+import { requireCurrentSession } from '../lib/require-auth'
 import {
   addSource as repoAddSource,
   deleteSource as repoDeleteSource,
@@ -12,11 +14,20 @@ import { templates, type ServiceTemplate } from '../lib/templates'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../lib/test-connection'
 import { colors, fonts } from '../styles'
 
-const getSources = createServerFn({ method: 'GET' }).handler(async () => {
-  return repoGetSources()
+const getHomeData = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireCurrentSession()
+  const merged = await ensureMergedSpec()
+  const pathCount = merged ? Object.keys((merged.spec.paths as Record<string, unknown>) ?? {}).length : 0
+  return {
+    sources: await repoGetSources(),
+    errors: getErrors(),
+    pathCount,
+    mcpPath: '/mcp',
+  }
 })
 
 const addSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: Source }) => {
+  await requireCurrentSession()
   if (await sourceExists(data.slug)) {
     throw new Error(`Source "${data.slug}" already exists`)
   }
@@ -25,30 +36,34 @@ const addSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { 
 })
 
 const deleteSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
+  await requireCurrentSession()
   await repoDeleteSource(data.slug)
   return repoGetSources()
 })
 
 const testConnection = createServerFn({ method: 'POST' }).handler(
-  async ({ data }: { data: { templateId: string; baseUrl: string; token: string } }) => {
+  async ({ data }: { data: { templateId: string; baseUrl: string; token: string; allowInvalidTls?: boolean } }) => {
+    await requireCurrentSession()
     const template = templates.find((t) => t.id === data.templateId)
     if (!template) throw new Error('Unknown template')
-    return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token))
+    return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token, data.allowInvalidTls))
   },
 )
 
 export const Route = createFileRoute('/')({
-  loader: () => getSources(),
+  loader: () => getHomeData(),
   component: HomePage,
 })
 
 function HomePage() {
-  const sources = Route.useLoaderData()
+  const { sources, errors, pathCount, mcpPath } = Route.useLoaderData()
   const [activeTemplate, setActiveTemplate] = useState<ServiceTemplate | null>(null)
   const [showManual, setShowManual] = useState(false)
 
   return (
     <div>
+      <StatusBar sourceCount={sources.length} pathCount={pathCount} errors={errors} mcpPath={mcpPath} />
+
       {/* Active sources */}
       {sources.length > 0 && (
         <section style={{ marginBottom: '2.5rem' }}>
@@ -257,6 +272,64 @@ function HomePage() {
   )
 }
 
+function StatusBar({
+  sourceCount,
+  pathCount,
+  errors,
+  mcpPath,
+}: {
+  sourceCount: number
+  pathCount: number
+  errors: Array<{ slug: string; error: string }>
+  mcpPath: string
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        padding: '0.5rem 0.85rem',
+        marginBottom: '1.5rem',
+        background: colors.bgCard,
+        border: `1px solid ${colors.border}`,
+        borderRadius: '8px',
+        fontSize: '0.8rem',
+      }}
+    >
+      <span style={{ color: colors.textMuted }}>
+        <strong style={{ color: colors.text }}>{sourceCount}</strong> {sourceCount === 1 ? 'source' : 'sources'}
+      </span>
+      <span style={{ color: colors.textMuted }}>
+        <strong style={{ color: colors.text }}>{pathCount}</strong> {pathCount === 1 ? 'endpoint' : 'endpoints'}
+      </span>
+      {errors.length > 0 && (
+        <span
+          title={errors.map((e) => `${e.slug}: ${e.error}`).join('\n')}
+          style={{ color: colors.error, cursor: 'help' }}
+        >
+          {errors.length} {errors.length === 1 ? 'error' : 'errors'}
+        </span>
+      )}
+      <span style={{ flex: 1 }} />
+      <span style={{ color: colors.textDim, fontFamily: fonts.mono, fontSize: '0.75rem' }}>MCP</span>
+      <code
+        style={{
+          fontFamily: fonts.mono,
+          fontSize: '0.75rem',
+          color: colors.textMuted,
+          background: colors.bgInput,
+          padding: '2px 8px',
+          borderRadius: '4px',
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        {mcpPath}
+      </code>
+    </div>
+  )
+}
+
 function suggestSlug(base: string, existing: string[]): string {
   if (!existing.includes(base)) return base
   for (let i = 2; i < 100; i++) {
@@ -419,8 +492,8 @@ function TemplateForm({
             />
             <span style={{ fontSize: '0.8rem', color: colors.textMuted }}>
               Allow invalid TLS certs
-              <span style={{ display: 'block', color: colors.error, marginTop: '0.2rem' }}>
-                Temporary workaround for self-signed or mismatched certificates.
+              <span style={{ display: 'block', marginTop: '0.2rem' }}>
+                Use this when the service uses a self-signed or private homelab certificate.
               </span>
             </span>
           </label>
@@ -574,8 +647,8 @@ function ManualForm({ existingSlugs, onCancel }: { existingSlugs: string[]; onCa
             />
             <span style={{ fontSize: '0.8rem', color: colors.textMuted }}>
               Allow invalid TLS certs
-              <span style={{ display: 'block', color: colors.error, marginTop: '0.2rem' }}>
-                Temporary workaround for self-signed or mismatched certificates.
+              <span style={{ display: 'block', marginTop: '0.2rem' }}>
+                Use this when the service uses a self-signed or private homelab certificate.
               </span>
             </span>
           </label>

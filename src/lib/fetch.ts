@@ -1,10 +1,97 @@
-// TODO: TLS verification is globally disabled in early development via the
-// `NODE_TLS_REJECT_UNAUTHORIZED=0` env var (set in docker-compose.yml and
-// server.entry.js). Before any non-dev use, remove that env var, restore the
-// per-source `allowInvalidTls` flag, and have an undici Agent applied only to
-// sources that opt in. Note: undici@8 Agents cannot be passed as `dispatcher`
-// to Node 22's built-in `fetch` (UND_ERR_INVALID_ARG); pin undici to a
-// version matching Node's bundled one, or use undici's own `fetch` export.
+import http from 'node:http'
+import https from 'node:https'
+
+function toNodeHeaders(headers: Headers): Record<string, string | string[]> {
+  const result: Record<string, string | string[]> = {}
+  for (const [name, value] of headers.entries()) {
+    const existing = result[name]
+    if (existing === undefined) {
+      result[name] = value
+      continue
+    }
+    result[name] = Array.isArray(existing) ? [...existing, value] : [existing, value]
+  }
+  return result
+}
+
+function toResponseHeaders(headers: http.IncomingHttpHeaders): Headers {
+  const result = new Headers()
+  for (const [name, value] of Object.entries(headers)) {
+    if (value === undefined) continue
+    if (Array.isArray(value)) {
+      for (const item of value) result.append(name, item)
+      continue
+    }
+    result.set(name, value)
+  }
+  return result
+}
+
+async function toRequestBody(body: BodyInit | null | undefined): Promise<Buffer | undefined> {
+  if (body == null) return undefined
+  if (typeof body === 'string') return Buffer.from(body)
+  if (body instanceof URLSearchParams) return Buffer.from(body.toString())
+  if (body instanceof ArrayBuffer) return Buffer.from(body)
+  if (ArrayBuffer.isView(body)) return Buffer.from(body.buffer, body.byteOffset, body.byteLength)
+  if (body instanceof Blob) return Buffer.from(await body.arrayBuffer())
+  return Buffer.from(await new Response(body).arrayBuffer())
+}
+
+async function fetchWithOptionalInvalidTls(
+  url: string,
+  init: RequestInit,
+  allowInvalidTls: boolean,
+): Promise<Response> {
+  const target = new URL(url)
+  if (!allowInvalidTls || target.protocol !== 'https:') {
+    return fetch(url, init)
+  }
+
+  const headers = new Headers(init.headers)
+  const body = await toRequestBody(init.body)
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      target,
+      {
+        method: init.method,
+        headers: toNodeHeaders(headers),
+        agent: new https.Agent({ rejectUnauthorized: false }),
+      },
+      (res) => {
+        const chunks: Buffer[] = []
+        res.on('data', (chunk) => {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        })
+        res.on('end', () => {
+          resolve(
+            new Response(Buffer.concat(chunks), {
+              status: res.statusCode ?? 500,
+              statusText: res.statusMessage ?? '',
+              headers: toResponseHeaders(res.headers),
+            }),
+          )
+        })
+      },
+    )
+
+    req.on('error', reject)
+
+    if (init.signal) {
+      const abort = () =>
+        req.destroy(init.signal?.reason instanceof Error ? init.signal.reason : new Error('Request aborted'))
+      if (init.signal.aborted) {
+        abort()
+        return
+      }
+      init.signal.addEventListener('abort', abort, { once: true })
+      req.on('close', () => init.signal?.removeEventListener('abort', abort))
+    }
+
+    if (body) req.write(body)
+    req.end()
+  })
+}
 
 function describeError(err: unknown): string {
   if (!(err instanceof Error)) return String(err)
@@ -18,9 +105,14 @@ function describeError(err: unknown): string {
   return causeStr ? `${err.message} → cause: ${causeStr}` : err.message
 }
 
-export async function loggedFetch(url: string, init: RequestInit, context: string): Promise<Response> {
+export async function loggedFetch(
+  url: string,
+  init: RequestInit,
+  context: string,
+  options?: { allowInvalidTls?: boolean },
+): Promise<Response> {
   try {
-    const res = await fetch(url, init)
+    const res = await fetchWithOptionalInvalidTls(url, init, options?.allowInvalidTls ?? false)
     if (!res.ok) {
       console.warn(`[fetch] ${context} ${init.method ?? 'GET'} ${url} → ${res.status} ${res.statusText}`)
     } else {

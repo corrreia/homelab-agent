@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as StatusRouteImport } from './routes/status'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
@@ -20,11 +19,6 @@ import { Route as ApiSourcesSlugRouteImport } from './routes/api/sources/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiProxySlugSplatRouteImport } from './routes/api/proxy/$slug/$'
 
-const StatusRoute = StatusRouteImport.update({
-  id: '/status',
-  path: '/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
@@ -75,7 +69,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
-  '/status': typeof StatusRoute
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -87,7 +80,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
-  '/status': typeof StatusRoute
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -100,7 +92,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
-  '/status': typeof StatusRoute
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -114,7 +105,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mcp'
-    | '/status'
     | '/api/spec'
     | '/sources/$slug'
     | '/api/auth/$'
@@ -126,7 +116,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mcp'
-    | '/status'
     | '/api/spec'
     | '/sources/$slug'
     | '/api/auth/$'
@@ -138,7 +127,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mcp'
-    | '/status'
     | '/api/spec'
     | '/sources/$slug'
     | '/api/auth/$'
@@ -151,7 +139,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
-  StatusRoute: typeof StatusRoute
   ApiSpecRoute: typeof ApiSpecRoute
   SourcesSlugRoute: typeof SourcesSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -162,13 +149,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/mcp': {
       id: '/mcp'
       path: '/mcp'
@@ -239,7 +219,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
-  StatusRoute: StatusRoute,
   ApiSpecRoute: ApiSpecRoute,
   SourcesSlugRoute: SourcesSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

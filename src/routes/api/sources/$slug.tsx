@@ -1,11 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { type Source } from '../../../lib/config'
+import { requireApiSession } from '../../../lib/require-auth'
 import { deleteSource, getSource, updateSource } from '../../../lib/sources-repo'
 
 export const Route = createFileRoute('/api/sources/$slug')({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ request, params }) => {
+        await requireApiSession(request)
         const source = await getSource(params.slug)
         if (!source) {
           return Response.json({ error: 'Source not found' }, { status: 404 })
@@ -13,6 +15,7 @@ export const Route = createFileRoute('/api/sources/$slug')({
         return Response.json(source)
       },
       PUT: async ({ request, params }) => {
+        await requireApiSession(request)
         const existing = await getSource(params.slug)
         if (!existing) {
           return Response.json({ error: 'Source not found' }, { status: 404 })
@@ -25,7 +28,8 @@ export const Route = createFileRoute('/api/sources/$slug')({
           return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 })
         }
       },
-      DELETE: async ({ params }) => {
+      DELETE: async ({ request, params }) => {
+        await requireApiSession(request)
         const existing = await getSource(params.slug)
         if (!existing) {
           return Response.json({ error: 'Source not found' }, { status: 404 })

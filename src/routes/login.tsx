@@ -16,7 +16,7 @@ function LoginPage() {
     setError(null)
     setLoading(true)
     const { error: err } = await authClient.signIn.oauth2({
-      providerId: 'pocket-id',
+      providerId: 'oidc',
       callbackURL: '/',
     })
     if (err) {
@@ -49,7 +49,7 @@ function LoginPage() {
       >
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, fontFamily: fonts.body }}>Sign in</h1>
         <p style={{ margin: '0.5rem 0 1.5rem', color: colors.textMuted, fontSize: '0.9rem' }}>
-          Use your Pocket ID account to access the homelab agent.
+          Sign in with your OIDC provider to access the homelab agent.
         </p>
         {error && (
           <div
@@ -84,7 +84,7 @@ function LoginPage() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? 'Redirecting…' : 'Sign in with Pocket ID'}
+          {loading ? 'Redirecting…' : 'Sign in'}
         </button>
       </div>
     </div>

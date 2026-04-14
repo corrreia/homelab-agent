@@ -5,9 +5,5 @@ services:
       - '3000:3000'
     env_file:
       - .env
-    environment:
-      # TODO: early-dev — disables TLS verification on every outbound fetch.
-      # Remove before any non-dev use and gate on per-source `allowInvalidTls`.
-      - NODE_TLS_REJECT_UNAUTHORIZED=0
     volumes:
       - ./data:/app/data

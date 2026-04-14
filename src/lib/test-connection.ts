@@ -1,5 +1,6 @@
 import type { AuthConfig } from './config'
 import type { ServiceTemplate } from './templates'
+import { loggedFetch } from './fetch'
 
 export interface TestResult {
   ok: boolean
@@ -12,6 +13,7 @@ export interface TestRequest {
   testPath: string
   auth: AuthConfig
   prefix?: string
+  allowInvalidTls?: boolean
 }
 
 export async function testServiceConnection(req: TestRequest): Promise<TestResult> {
@@ -25,11 +27,16 @@ export async function testServiceConnection(req: TestRequest): Promise<TestResul
   }
 
   try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers,
-      signal: AbortSignal.timeout(10_000),
-    })
+    const res = await loggedFetch(
+      url,
+      {
+        method: 'GET',
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      },
+      'test-connection',
+      { allowInvalidTls: req.allowInvalidTls },
+    )
 
     if (res.ok) {
       return { ok: true, status: res.status, message: 'Connected successfully' }
@@ -56,7 +63,12 @@ export async function testServiceConnection(req: TestRequest): Promise<TestResul
 }
 
 /** Build a TestRequest from a template and the user's per-instance values. */
-export function templateTestRequest(template: ServiceTemplate, baseUrl: string, token: string): TestRequest {
+export function templateTestRequest(
+  template: ServiceTemplate,
+  baseUrl: string,
+  token: string,
+  allowInvalidTls?: boolean,
+): TestRequest {
   const prefix = template.publicPathPrefix ?? ''
   const auth: AuthConfig =
     template.authType === 'bearer'
@@ -68,5 +80,5 @@ export function templateTestRequest(template: ServiceTemplate, baseUrl: string, 
             value: template.authHeaderName === 'Authorization' ? `Token ${token}` : token,
           }
         : { type: 'none' }
-  return { baseUrl, testPath: template.testEndpoint, auth, prefix }
+  return { baseUrl, testPath: template.testEndpoint, auth, prefix, allowInvalidTls }
 }

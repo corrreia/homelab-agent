@@ -46,8 +46,20 @@ async function makeRequest(options: RequestOptions): Promise<unknown> {
   const headers: Record<string, string> = {
     ...getAuthHeaders(source),
   }
-  if (options.body) {
-    headers['Content-Type'] = options.contentType ?? 'application/json'
+  let body: BodyInit | undefined
+  if (options.body !== undefined) {
+    if (options.rawBody) {
+      body =
+        typeof options.body === 'string' || options.body instanceof ArrayBuffer || ArrayBuffer.isView(options.body)
+          ? (options.body as BodyInit)
+          : String(options.body)
+      if (options.contentType) {
+        headers['Content-Type'] = options.contentType
+      }
+    } else {
+      headers['Content-Type'] = options.contentType ?? 'application/json'
+      body = JSON.stringify(options.body)
+    }
   }
 
   const res = await loggedFetch(
@@ -55,14 +67,11 @@ async function makeRequest(options: RequestOptions): Promise<unknown> {
     {
       method: options.method,
       headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
+      body,
     },
     `mcp[${source.slug}]`,
+    { allowInvalidTls: source.allowInvalidTls },
   )
-
-  if (options.rawBody) {
-    return res.text()
-  }
 
   const contentType = res.headers.get('content-type') ?? ''
   if (contentType.includes('application/json')) {
@@ -71,9 +80,7 @@ async function makeRequest(options: RequestOptions): Promise<unknown> {
   return res.text()
 }
 
-export async function buildMcpServer(): Promise<McpServer> {
-  const executor = new NodeVmExecutor()
-
+export async function ensureMergedSpec(): Promise<ReturnType<typeof getCachedMergedSpec>> {
   let merged = getCachedMergedSpec()
   if (!merged) {
     const port = Number(process.env.PORT ?? 3000)
@@ -82,6 +89,12 @@ export async function buildMcpServer(): Promise<McpServer> {
     merged = await mergeSpecs(sources, proxyBaseUrl)
     setCachedMergedSpec(merged)
   }
+  return merged
+}
+
+export async function buildMcpServer(): Promise<McpServer> {
+  const executor = new NodeVmExecutor()
+  const merged = (await ensureMergedSpec())!
 
   const server = openApiMcpServer({
     spec: merged.spec,

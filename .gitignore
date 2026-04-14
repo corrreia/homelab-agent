@@ -3,10 +3,10 @@ dist/
 .output/
 .cache/
 .vite/
+.tanstack/
 *.log
 .DS_Store
 .env
 .env.local
 .env.*.local
-data/*
-!data/migrations/
+data/

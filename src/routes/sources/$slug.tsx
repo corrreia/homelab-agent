@@ -2,26 +2,30 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { type Source } from '../../lib/config'
+import { requireCurrentSession } from '../../lib/require-auth'
 import { getSource as repoGetSource, updateSource as repoUpdateSource } from '../../lib/sources-repo'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../../lib/test-connection'
 import { templates, type ServiceTemplate } from '../../lib/templates'
 import { colors, fonts } from '../../styles'
 
 const getSource = createServerFn({ method: 'GET' }).handler(async ({ data }: { data: { slug: string } }) => {
+  await requireCurrentSession()
   return repoGetSource(data.slug)
 })
 
 const updateSource = createServerFn({ method: 'POST' }).handler(
   async ({ data }: { data: { slug: string; source: Source } }) => {
+    await requireCurrentSession()
     return repoUpdateSource(data.slug, data.source)
   },
 )
 
 const testTemplateConnection = createServerFn({ method: 'POST' }).handler(
-  async ({ data }: { data: { templateId: string; baseUrl: string; token: string } }) => {
+  async ({ data }: { data: { templateId: string; baseUrl: string; token: string; allowInvalidTls?: boolean } }) => {
+    await requireCurrentSession()
     const template = templates.find((t) => t.id === data.templateId)
     if (!template) throw new Error('Unknown template')
-    return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token))
+    return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token, data.allowInvalidTls))
   },
 )
 
@@ -88,7 +92,7 @@ function EditTemplateSource({
     setTestResult(null)
     try {
       const result = await testTemplateConnection({
-        data: { templateId: template.id, baseUrl: baseUrl.replace(/\/+$/, ''), token },
+        data: { templateId: template.id, baseUrl: baseUrl.replace(/\/+$/, ''), token, allowInvalidTls },
       })
       setTestResult(result)
     } catch {
@@ -209,8 +213,8 @@ function EditTemplateSource({
             />
             <span style={{ fontSize: '0.8rem', color: colors.textMuted }}>
               Allow invalid TLS certs
-              <span style={{ display: 'block', color: colors.error, marginTop: '0.2rem' }}>
-                Temporary workaround for self-signed or mismatched certificates.
+              <span style={{ display: 'block', marginTop: '0.2rem' }}>
+                Use this when the service uses a self-signed or private homelab certificate.
               </span>
             </span>
           </label>
@@ -342,8 +346,8 @@ function EditCustomSource({ source, onSaved }: { source: Source; onSaved: () => 
             />
             <span style={{ fontSize: '0.8rem', color: colors.textMuted }}>
               Allow invalid TLS certs
-              <span style={{ display: 'block', color: colors.error, marginTop: '0.2rem' }}>
-                Temporary workaround for self-signed or mismatched certificates.
+              <span style={{ display: 'block', marginTop: '0.2rem' }}>
+                Use this when the service uses a self-signed or private homelab certificate.
               </span>
             </span>
           </label>

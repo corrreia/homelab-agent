@@ -2,9 +2,24 @@ import { eq } from 'drizzle-orm'
 import { db } from '../db'
 import { sources } from '../db/schema'
 import type { AuthConfig, Source } from './config'
+import { decryptNullable, encryptNullable } from './encryption'
 import { invalidateMergedSpecCache } from './spec-cache'
 import { withInferredApiBasePath } from './source-spec'
 import { getTemplate } from './templates'
+
+const ALLOWED_URL_SCHEMES = new Set(['http:', 'https:'])
+
+function validateHttpUrl(value: string, label: string): void {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new Error(`${label} must be a valid URL`)
+  }
+  if (!ALLOWED_URL_SCHEMES.has(parsed.protocol)) {
+    throw new Error(`${label} must use http or https (got "${parsed.protocol}")`)
+  }
+}
 
 function validateSource(source: Source): void {
   if (!source.kind) {
@@ -20,6 +35,9 @@ function validateSource(source: Source): void {
       throw new Error(`Unknown template kind: ${source.kind}`)
     }
   }
+  validateHttpUrl(source.baseUrl, 'baseUrl')
+  if (source.specUrl) validateHttpUrl(source.specUrl, 'specUrl')
+  if (source.fallbackSpecUrl) validateHttpUrl(source.fallbackSpecUrl, 'fallbackSpecUrl')
 }
 
 type Row = typeof sources.$inferSelect
@@ -42,9 +60,13 @@ function rowToSource(row: Row): Source {
 function rowToAuth(row: Row): AuthConfig {
   switch (row.authType) {
     case 'bearer':
-      return { type: 'bearer', token: row.authToken ?? undefined }
+      return { type: 'bearer', token: decryptNullable(row.authToken) ?? undefined }
     case 'header':
-      return { type: 'header', name: row.authHeaderName ?? undefined, value: row.authHeaderValue ?? undefined }
+      return {
+        type: 'header',
+        name: row.authHeaderName ?? undefined,
+        value: decryptNullable(row.authHeaderValue) ?? undefined,
+      }
     case 'none':
       return { type: 'none' }
   }
@@ -62,9 +84,9 @@ function sourceToInsert(s: Source): Insert {
     fallbackSpecUrl: isCustom ? (s.fallbackSpecUrl ?? null) : null,
     allowInvalidTls: s.allowInvalidTls ?? false,
     authType: s.auth.type,
-    authToken: s.auth.type === 'bearer' ? (s.auth.token ?? null) : null,
+    authToken: s.auth.type === 'bearer' ? encryptNullable(s.auth.token ?? null) : null,
     authHeaderName: s.auth.type === 'header' ? (s.auth.name ?? null) : null,
-    authHeaderValue: s.auth.type === 'header' ? (s.auth.value ?? null) : null,
+    authHeaderValue: s.auth.type === 'header' ? encryptNullable(s.auth.value ?? null) : null,
   }
 }
 

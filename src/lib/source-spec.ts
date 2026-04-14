@@ -46,7 +46,7 @@ export async function fetchOpenApiSpec(
   for (const specUrl of specUrls) {
     try {
       const headers = shouldSendAuth(specUrl, source.baseUrl) ? buildAuthHeaders(source.auth) : undefined
-      const res = await loggedFetch(specUrl, { headers }, 'spec-fetch')
+      const res = await loggedFetch(specUrl, { headers }, 'spec-fetch', { allowInvalidTls: source.allowInvalidTls })
       if (!res.ok) {
         throw new Error(`Failed to fetch spec from ${specUrl}: ${res.status} ${res.statusText}`)
       }
@@ -92,10 +92,13 @@ function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
   const variables = 'variables' in firstServer ? (firstServer as { variables: unknown }).variables : undefined
   const resolvedUrl = substituteServerVariables(serverUrl, variables)
 
+  // If template variables couldn't be substituted, don't pretend the leftover braces are a path.
+  if (resolvedUrl.includes('{')) return undefined
+
   try {
     const parsed = new URL(resolvedUrl, 'http://localhost')
     const basePath = parsed.pathname.replace(/\/+$/, '')
-    return basePath === '/' ? undefined : basePath
+    return basePath === '' || basePath === '/' ? undefined : basePath
   } catch {
     return undefined
   }
@@ -104,10 +107,13 @@ function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
 export async function withInferredApiBasePath(source: Source): Promise<Source> {
   try {
     const spec = await fetchOpenApiSpec(source)
-    const apiBasePath = inferApiBasePath(spec)
+    const inferred = inferApiBasePath(spec)
+    const template = source.kind !== 'custom' ? getTemplate(source.kind) : undefined
+    const prefix = template?.publicPathPrefix ?? ''
+    const combined = `${prefix}${inferred ?? ''}`
     return {
       ...source,
-      apiBasePath,
+      apiBasePath: combined === '' ? undefined : combined,
     }
   } catch {
     return source

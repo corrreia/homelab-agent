@@ -45,21 +45,44 @@ export async function proxyRequest(source: Source, path: string, request: Reques
     headers.set(name, value)
   }
 
+  const body = request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined
+
   const res = await loggedFetch(
     url.toString(),
     {
       method: request.method,
       headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
-      // @ts-expect-error - duplex is needed for streaming body
-      duplex: 'half',
+      body,
     },
     `proxy[${source.slug}]`,
+    { allowInvalidTls: source.allowInvalidTls },
   )
 
   return new Response(res.body, {
     status: res.status,
     statusText: res.statusText,
-    headers: res.headers,
+    headers: filterResponseHeaders(res.headers),
   })
+}
+
+const ALLOWED_RESPONSE_HEADERS = new Set([
+  'content-type',
+  'content-length',
+  'content-disposition',
+  'content-encoding',
+  'cache-control',
+  'etag',
+  'last-modified',
+  'expires',
+  'vary',
+])
+
+function filterResponseHeaders(headers: Headers): Headers {
+  const out = new Headers()
+  headers.forEach((value, name) => {
+    if (ALLOWED_RESPONSE_HEADERS.has(name.toLowerCase())) {
+      out.set(name, value)
+    }
+  })
+  return out
 }

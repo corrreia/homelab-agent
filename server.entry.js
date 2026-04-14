@@ -4,10 +4,6 @@ try {
   // No .env file — rely on real env vars.
 }
 
-// TODO: early-dev — disables TLS verification on every outbound fetch.
-// Remove before any non-dev use and gate on per-source `allowInvalidTls`.
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
 import { serve } from 'srvx'
 import { readFile, mkdir } from 'node:fs/promises'
 import { join, extname, dirname } from 'node:path'
@@ -18,7 +14,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import server from './dist/server/server.js'
 
 const DB_PATH = join(process.cwd(), 'data', 'app.db')
-const MIGRATIONS_PATH = join(process.cwd(), 'data', 'migrations')
+const MIGRATIONS_PATH = join(process.cwd(), 'migrations')
 
 await mkdir(dirname(DB_PATH), { recursive: true })
 const sqlite = new Database(DB_PATH)
@@ -64,7 +60,7 @@ const srv = serve({
     const url = new URL(request.url)
 
     // Serve static assets from dist/client/
-    if (url.pathname.startsWith('/assets/')) {
+    if (url.pathname.startsWith('/assets/') || url.pathname === '/favicon.svg') {
       const res = await handleStatic(url.pathname)
       if (res) return res
     }

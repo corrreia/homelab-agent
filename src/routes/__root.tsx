@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Outlet, createRootRoute, HeadContent, Scripts, Link, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
+import { Logo } from '../components/Logo'
 import { auth } from '../lib/auth'
 import { colors, fonts } from '../styles'
 
@@ -34,6 +35,7 @@ export const Route = createRootRoute({
       { title: 'Homelab Agent' },
     ],
     links: [
+      { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
       {
         rel: 'stylesheet',
         href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap',
@@ -78,7 +80,8 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
             height: '56px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <Logo size={22} style={{ color: colors.accent, display: 'block' }} />
             <span style={{ fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.02em' }}>homelab-agent</span>
             <span
               style={{
@@ -94,34 +97,20 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
               MCP
             </span>
           </div>
-          <nav style={{ display: 'flex', gap: '0.25rem' }}>
-            {[
-              { to: '/' as const, label: 'Services' },
-              { to: '/status' as const, label: 'Status' },
-            ].map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                style={{
-                  color: colors.textMuted,
-                  textDecoration: 'none',
-                  padding: '0.4rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: 500,
-                  transition: 'color 0.15s, background 0.15s',
-                }}
-                activeProps={{
-                  style: {
-                    color: colors.text,
-                    background: colors.bgCard,
-                  },
-                }}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
+          <Link
+            to="/"
+            style={{
+              color: colors.textMuted,
+              textDecoration: 'none',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '6px',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+            }}
+            activeProps={{ style: { color: colors.text, background: colors.bgCard } }}
+          >
+            Services
+          </Link>
         </header>
         <main style={{ maxWidth: '960px', margin: '0 auto', padding: '2rem' }}>{children}</main>
         <Scripts />

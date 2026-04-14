@@ -6,7 +6,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from './schema'
 
 const DB_PATH = join(process.cwd(), 'data', 'app.db')
-const MIGRATIONS_PATH = join(process.cwd(), 'data', 'migrations')
+const MIGRATIONS_PATH = join(process.cwd(), 'migrations')
 
 if (!existsSync(dirname(DB_PATH))) {
   mkdirSync(dirname(DB_PATH), { recursive: true })

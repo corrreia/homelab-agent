@@ -20,6 +20,7 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=build /app/dist dist
 COPY server.entry.js .
 COPY specs ./specs
+COPY migrations ./migrations
 
 EXPOSE 3000
 
