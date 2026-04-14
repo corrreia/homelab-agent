@@ -3,8 +3,8 @@ import { loadBundledSpec } from './bundled-specs'
 import { loggedFetch } from './fetch'
 import { getTemplate, resolveBundledSpec as resolveTemplateBundledSpec } from './templates'
 
-function bundledSpecForSource(source: Pick<Source, 'slug' | 'specVersion'>): string | undefined {
-  const template = getTemplate(source.slug)
+function bundledSpecForSource(source: Pick<Source, 'kind' | 'specVersion'>): string | undefined {
+  const template = getTemplate(source.kind)
   if (!template) return undefined
   return resolveTemplateBundledSpec(template, source.specVersion)
 }
@@ -30,7 +30,10 @@ function shouldSendAuth(url: string, baseUrl: string): boolean {
 }
 
 export async function fetchOpenApiSpec(
-  source: Pick<Source, 'slug' | 'specUrl' | 'fallbackSpecUrl' | 'specVersion' | 'baseUrl' | 'auth' | 'allowInvalidTls'>,
+  source: Pick<
+    Source,
+    'slug' | 'kind' | 'specUrl' | 'fallbackSpecUrl' | 'specVersion' | 'baseUrl' | 'auth' | 'allowInvalidTls'
+  >,
 ): Promise<Record<string, unknown>> {
   const bundled = bundledSpecForSource(source)
   if (bundled) {

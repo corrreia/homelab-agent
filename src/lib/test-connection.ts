@@ -1,3 +1,4 @@
+import type { AuthConfig } from './config'
 import type { ServiceTemplate } from './templates'
 
 export interface TestResult {
@@ -6,25 +7,21 @@ export interface TestResult {
   message: string
 }
 
-export async function testServiceConnection(
-  template: ServiceTemplate,
-  baseUrl: string,
-  token: string,
-  _allowInvalidTls = false,
-): Promise<TestResult> {
-  const prefix = template.publicPathPrefix ?? template.apiBasePath ?? (template.id === 'seerr' ? '/api/v1' : '')
-  const url = `${baseUrl.replace(/\/+$/, '')}${prefix}${template.testEndpoint}`
+export interface TestRequest {
+  baseUrl: string
+  testPath: string
+  auth: AuthConfig
+  prefix?: string
+}
+
+export async function testServiceConnection(req: TestRequest): Promise<TestResult> {
+  const url = `${req.baseUrl.replace(/\/+$/, '')}${req.prefix ?? ''}${req.testPath}`
 
   const headers: Record<string, string> = {}
-  if (template.authType === 'bearer') {
-    headers['Authorization'] = `Bearer ${token}`
-  } else if (template.authType === 'header' && template.authHeaderName) {
-    // Paperless uses "Authorization: Token xxx" — token already has the right value
-    if (template.authHeaderName === 'Authorization') {
-      headers['Authorization'] = `Token ${token}`
-    } else {
-      headers[template.authHeaderName] = token
-    }
+  if (req.auth.type === 'bearer' && req.auth.token) {
+    headers['Authorization'] = `Bearer ${req.auth.token}`
+  } else if (req.auth.type === 'header' && req.auth.name && req.auth.value) {
+    headers[req.auth.name] = req.auth.value
   }
 
   try {
@@ -56,4 +53,20 @@ export async function testServiceConnection(
     }
     return { ok: false, message: `Connection error: ${msg}` }
   }
+}
+
+/** Build a TestRequest from a template and the user's per-instance values. */
+export function templateTestRequest(template: ServiceTemplate, baseUrl: string, token: string): TestRequest {
+  const prefix = template.publicPathPrefix ?? (template.id === 'seerr' ? '/api/v1' : '')
+  const auth: AuthConfig =
+    template.authType === 'bearer'
+      ? { type: 'bearer', token }
+      : template.authType === 'header' && template.authHeaderName
+        ? {
+            type: 'header',
+            name: template.authHeaderName,
+            value: template.authHeaderName === 'Authorization' ? `Token ${token}` : token,
+          }
+        : { type: 'none' }
+  return { baseUrl, testPath: template.testEndpoint, auth, prefix }
 }

@@ -17,8 +17,12 @@ export const Route = createFileRoute('/api/sources/')({
         if (await sourceExists(source.slug)) {
           return Response.json({ error: `Source "${source.slug}" already exists` }, { status: 409 })
         }
-        const created = await addSource(source)
-        return Response.json(created, { status: 201 })
+        try {
+          const created = await addSource(source)
+          return Response.json(created, { status: 201 })
+        } catch (err) {
+          return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 })
+        }
       },
     },
   },

@@ -201,6 +201,8 @@ export const oauthConsentRelations = relations(oauthConsent, ({ one }) => ({
 
 export const sources = sqliteTable('sources', {
   slug: text('slug').primaryKey(),
+  /** Either a known template id (e.g. 'jellyfin') or 'custom' */
+  kind: text('kind').notNull().default('custom'),
   baseUrl: text('base_url').notNull(),
   apiBasePath: text('api_base_path'),
   specVersion: text('spec_version'),

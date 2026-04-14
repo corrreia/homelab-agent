@@ -4,6 +4,23 @@ import { sources } from '../db/schema'
 import type { AuthConfig, Source } from './config'
 import { invalidateMergedSpecCache } from './spec-cache'
 import { withInferredApiBasePath } from './source-spec'
+import { getTemplate } from './templates'
+
+function validateSource(source: Source): void {
+  if (!source.kind) {
+    throw new Error('source.kind is required')
+  }
+  if (source.kind === 'custom') {
+    if (!source.specUrl) {
+      throw new Error('Custom sources require specUrl')
+    }
+  } else {
+    const template = getTemplate(source.kind)
+    if (!template) {
+      throw new Error(`Unknown template kind: ${source.kind}`)
+    }
+  }
+}
 
 type Row = typeof sources.$inferSelect
 type Insert = typeof sources.$inferInsert
@@ -11,6 +28,7 @@ type Insert = typeof sources.$inferInsert
 function rowToSource(row: Row): Source {
   return {
     slug: row.slug,
+    kind: row.kind,
     baseUrl: row.baseUrl,
     apiBasePath: row.apiBasePath ?? undefined,
     specVersion: row.specVersion ?? undefined,
@@ -33,13 +51,15 @@ function rowToAuth(row: Row): AuthConfig {
 }
 
 function sourceToInsert(s: Source): Insert {
+  const isCustom = s.kind === 'custom'
   return {
     slug: s.slug,
+    kind: s.kind,
     baseUrl: s.baseUrl,
     apiBasePath: s.apiBasePath ?? null,
-    specVersion: s.specVersion ?? null,
-    specUrl: s.specUrl ?? null,
-    fallbackSpecUrl: s.fallbackSpecUrl ?? null,
+    specVersion: isCustom ? null : (s.specVersion ?? null),
+    specUrl: isCustom ? (s.specUrl ?? null) : null,
+    fallbackSpecUrl: isCustom ? (s.fallbackSpecUrl ?? null) : null,
     allowInvalidTls: s.allowInvalidTls ?? false,
     authType: s.auth.type,
     authToken: s.auth.type === 'bearer' ? (s.auth.token ?? null) : null,
@@ -59,6 +79,7 @@ export async function getSource(slug: string): Promise<Source | null> {
 }
 
 export async function addSource(source: Source): Promise<Source> {
+  validateSource(source)
   const enriched = await withInferredApiBasePath(source)
   db.insert(sources).values(sourceToInsert(enriched)).run()
   invalidateMergedSpecCache()
@@ -66,6 +87,7 @@ export async function addSource(source: Source): Promise<Source> {
 }
 
 export async function updateSource(slug: string, source: Source): Promise<Source> {
+  validateSource({ ...source, slug })
   const enriched = await withInferredApiBasePath({ ...source, slug })
   const { slug: _omit, ...rest } = sourceToInsert(enriched)
   db.update(sources)

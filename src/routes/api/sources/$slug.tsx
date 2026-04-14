@@ -18,8 +18,12 @@ export const Route = createFileRoute('/api/sources/$slug')({
           return Response.json({ error: 'Source not found' }, { status: 404 })
         }
         const updates = (await request.json()) as Partial<Source>
-        const updated = await updateSource(params.slug, { ...existing, ...updates, slug: params.slug })
-        return Response.json(updated)
+        try {
+          const updated = await updateSource(params.slug, { ...existing, ...updates, slug: params.slug })
+          return Response.json(updated)
+        } catch (err) {
+          return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 })
+        }
       },
       DELETE: async ({ params }) => {
         const existing = await getSource(params.slug)

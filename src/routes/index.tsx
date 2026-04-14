@@ -9,7 +9,7 @@ import {
   sourceExists,
 } from '../lib/sources-repo'
 import { templates, type ServiceTemplate } from '../lib/templates'
-import { testServiceConnection, type TestResult } from '../lib/test-connection'
+import { templateTestRequest, testServiceConnection, type TestResult } from '../lib/test-connection'
 import { colors, fonts } from '../styles'
 
 const getSources = createServerFn({ method: 'GET' }).handler(async () => {
@@ -30,10 +30,10 @@ const deleteSource = createServerFn({ method: 'POST' }).handler(async ({ data }:
 })
 
 const testConnection = createServerFn({ method: 'POST' }).handler(
-  async ({ data }: { data: { templateId: string; baseUrl: string; token: string; allowInvalidTls?: boolean } }) => {
+  async ({ data }: { data: { templateId: string; baseUrl: string; token: string } }) => {
     const template = templates.find((t) => t.id === data.templateId)
     if (!template) throw new Error('Unknown template')
-    return testServiceConnection(template, data.baseUrl, data.token, data.allowInvalidTls)
+    return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token))
   },
 )
 
@@ -65,7 +65,7 @@ function HomePage() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {sources.map((source) => {
-              const template = templates.find((t) => t.defaultSlug === source.slug || t.id === source.slug)
+              const template = templates.find((t) => t.id === source.kind)
               return (
                 <div
                   key={source.slug}
@@ -181,36 +181,34 @@ function HomePage() {
             }}
           >
             {templates.map((t) => {
-              const alreadyAdded = sources.some((s) => s.slug === t.defaultSlug)
+              const instanceCount = sources.filter((s) => s.kind === t.id).length
               return (
                 <button
                   key={t.id}
-                  onClick={() => !alreadyAdded && setActiveTemplate(t)}
-                  disabled={alreadyAdded}
+                  onClick={() => setActiveTemplate(t)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
                     padding: '0.75rem 1rem',
-                    background: alreadyAdded ? colors.bgInput : colors.bgCard,
-                    border: `1px solid ${alreadyAdded ? colors.border : colors.border}`,
+                    background: colors.bgCard,
+                    border: `1px solid ${colors.border}`,
                     borderRadius: '8px',
-                    cursor: alreadyAdded ? 'default' : 'pointer',
-                    opacity: alreadyAdded ? 0.4 : 1,
+                    cursor: 'pointer',
                     textAlign: 'left',
                     color: colors.text,
                     fontFamily: fonts.body,
                     transition: 'border-color 0.15s, background 0.15s',
                   }}
                   onMouseEnter={(e) => {
-                    if (!alreadyAdded) {
+                    {
                       e.currentTarget.style.borderColor = t.color
                       e.currentTarget.style.background = colors.bgHover
                     }
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = colors.border
-                    e.currentTarget.style.background = alreadyAdded ? colors.bgInput : colors.bgCard
+                    e.currentTarget.style.background = colors.bgCard
                   }}
                 >
                   <img
@@ -224,7 +222,14 @@ function HomePage() {
                     }}
                   />
                   <div>
-                    <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{t.name}</div>
+                    <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
+                      {t.name}
+                      {instanceCount > 0 && (
+                        <span style={{ marginLeft: '0.4rem', color: colors.textDim, fontSize: '0.75rem' }}>
+                          · {instanceCount}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: '0.75rem', color: colors.textDim }}>{t.description}</div>
                   </div>
                 </button>
@@ -252,6 +257,15 @@ function HomePage() {
   )
 }
 
+function suggestSlug(base: string, existing: string[]): string {
+  if (!existing.includes(base)) return base
+  for (let i = 2; i < 100; i++) {
+    const candidate = `${base}-${i}`
+    if (!existing.includes(candidate)) return candidate
+  }
+  return base
+}
+
 function TemplateForm({
   template,
   existingSlugs,
@@ -263,7 +277,7 @@ function TemplateForm({
 }) {
   const [baseUrl, setBaseUrl] = useState('')
   const [token, setToken] = useState('')
-  const [slug, setSlug] = useState(template.defaultSlug)
+  const [slug, setSlug] = useState(() => suggestSlug(template.defaultSlug, existingSlugs))
   const [selectedVersion, setSelectedVersion] = useState(template.specVersions?.[0]?.value ?? '')
   const [allowInvalidTls, setAllowInvalidTls] = useState(false)
   const [error, setError] = useState('')
@@ -298,6 +312,7 @@ function TemplateForm({
 
     const source: Source = {
       slug,
+      kind: template.id,
       specVersion: template.specVersions ? selectedVersion : undefined,
       baseUrl: cleanBase,
       allowInvalidTls,
@@ -481,6 +496,7 @@ function ManualForm({ existingSlugs, onCancel }: { existingSlugs: string[]; onCa
 
     const source: Source = {
       slug,
+      kind: 'custom',
       specUrl,
       baseUrl,
       allowInvalidTls,
