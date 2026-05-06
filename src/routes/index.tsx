@@ -7,7 +7,7 @@ import { requireCurrentSession } from '../lib/require-auth'
 import {
   addSource as repoAddSource,
   deleteSource as repoDeleteSource,
-  getSources as repoGetSources,
+  getPublicSources as repoGetPublicSources,
   sourceExists,
 } from '../lib/sources-repo'
 import { templates, type ServiceTemplate } from '../lib/templates'
@@ -19,7 +19,7 @@ const getHomeData = createServerFn({ method: 'GET' }).handler(async () => {
   const merged = await ensureMergedSpec()
   const pathCount = merged ? Object.keys((merged.spec.paths as Record<string, unknown>) ?? {}).length : 0
   return {
-    sources: await repoGetSources(),
+    sources: await repoGetPublicSources(),
     errors: getErrors(),
     pathCount,
     mcpPath: '/mcp',
@@ -32,13 +32,13 @@ const addSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { 
     throw new Error(`Source "${data.slug}" already exists`)
   }
   await repoAddSource(data)
-  return repoGetSources()
+  return repoGetPublicSources()
 })
 
 const deleteSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
   await requireCurrentSession()
   await repoDeleteSource(data.slug)
-  return repoGetSources()
+  return repoGetPublicSources()
 })
 
 const testConnection = createServerFn({ method: 'POST' }).handler(

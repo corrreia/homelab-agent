@@ -80,7 +80,7 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 - **TanStack Start** (React 19, SSR) — file-based routes in `src/routes/`. `createServerFn` handlers live alongside components; `server` handlers under `src/routes/api/*` are the HTTP API.
 - **Auth:** Better Auth + generic OIDC via `genericOAuth` (any standards-compliant issuer — Pocket ID, Authentik, Keycloak, Auth0, …). Config in `src/lib/auth.ts`. `/mcp` is additionally gated by Better Auth's `mcp` plugin.
 - **Storage:** Drizzle + `better-sqlite3` at `data/app.db`. Schema in `src/db/schema.ts`, migrations in `migrations/` (generate with `pnpm db:generate`, apply with `pnpm db:migrate`). Migrations live outside `data/` so that mounting `./data` as a Docker volume doesn't clobber them.
-- **MCP:** `@cloudflare/codemode` exposes two tools (`search`/`execute`) over a merged OpenAPI spec. Entry point: `src/lib/mcp-server.ts`. Executor is `src/lib/node-vm-executor.ts`.
+- **MCP:** `@cloudflare/codemode` exposes two tools (`search`/`execute`) over a merged OpenAPI spec. Entry point: `src/lib/mcp-server.ts`. Executor is `src/lib/quickjs-executor.ts`.
 - **Proxy:** `src/lib/proxy.ts` forwards `/api/proxy/:slug/*` to the upstream, injecting creds from the DB. Request headers are allow-listed; response headers are allow-listed too.
 - **Sources:** User-added upstream services. Bundled OpenAPI templates live in `specs/`, wired via `src/lib/templates.ts` + `src/lib/bundled-specs.ts`. Custom sources fetch their spec at runtime (`src/lib/source-spec.ts`).
 
@@ -122,6 +122,7 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `src/lib/encryption.ts` | AES-GCM helpers + HKDF |
 | `src/lib/proxy.ts` | `/api/proxy/:slug/*` forwarding |
 | `src/lib/mcp-server.ts` | Code Mode MCP server wiring |
+| `src/lib/quickjs-executor.ts` | QuickJS-based Code Mode executor |
 | `src/lib/spec-merger.ts` | Combine per-source specs into one |
 | `src/lib/templates.ts` | Built-in source templates |
 | `specs/` | Bundled OpenAPI JSONs |
@@ -133,7 +134,8 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 
 | Var | Purpose |
 |---|---|
-| `ENCRYPTION_KEY` | HKDF master for cred encryption AND Better Auth session signing. Required. |
+| `BETTER_AUTH_SECRET` | Better Auth session signing secret. Required. |
+| `ENCRYPTION_KEY` | HKDF master for credential encryption. Required. |
 | `AUTH_URL` | Public origin (OAuth redirects). |
 | `OIDC_ISSUER` | OIDC issuer URL (any standards-compliant provider). |
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | OIDC client creds. |

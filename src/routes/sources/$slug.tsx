@@ -3,20 +3,25 @@ import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { type Source } from '../../lib/config'
 import { requireCurrentSession } from '../../lib/require-auth'
-import { getSource as repoGetSource, updateSource as repoUpdateSource } from '../../lib/sources-repo'
+import {
+  getPublicSource as repoGetPublicSource,
+  type PublicSource,
+  updateSourcePreservingSecret as repoUpdateSource,
+} from '../../lib/sources-repo'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../../lib/test-connection'
 import { templates, type ServiceTemplate } from '../../lib/templates'
 import { colors, fonts } from '../../styles'
 
 const getSource = createServerFn({ method: 'GET' }).handler(async ({ data }: { data: { slug: string } }) => {
   await requireCurrentSession()
-  return repoGetSource(data.slug)
+  return repoGetPublicSource(data.slug)
 })
 
 const updateSource = createServerFn({ method: 'POST' }).handler(
   async ({ data }: { data: { slug: string; source: Source } }) => {
     await requireCurrentSession()
-    return repoUpdateSource(data.slug, data.source)
+    await repoUpdateSource(data.slug, data.source)
+    return { ok: true }
   },
 )
 
@@ -66,20 +71,13 @@ function EditTemplateSource({
   template,
   onSaved,
 }: {
-  source: Source
+  source: PublicSource
   template: ServiceTemplate
   onSaved: () => void
 }) {
-  const initialToken = source.auth.token ?? source.auth.value ?? ''
-  // For paperless-style "Authorization: Token xxx" we strip the prefix back out for the input.
-  const displayToken =
-    template.authHeaderName === 'Authorization' && initialToken.startsWith('Token ')
-      ? initialToken.slice('Token '.length)
-      : initialToken
-
   const [slug, setSlug] = useState(source.slug)
   const [baseUrl, setBaseUrl] = useState(source.baseUrl)
-  const [token, setToken] = useState(displayToken)
+  const [token, setToken] = useState('')
   const [selectedVersion, setSelectedVersion] = useState(source.specVersion ?? template.specVersions?.[0]?.value ?? '')
   const [allowInvalidTls, setAllowInvalidTls] = useState(source.allowInvalidTls ?? false)
   const [error, setError] = useState('')
@@ -113,12 +111,12 @@ function EditTemplateSource({
       allowInvalidTls,
       auth:
         template.authType === 'bearer'
-          ? { type: 'bearer', token }
+          ? { type: 'bearer', token: token || undefined }
           : template.authType === 'header'
             ? {
                 type: 'header',
                 name: template.authHeaderName!,
-                value: template.authHeaderName === 'Authorization' ? `Token ${token}` : token,
+                value: token ? (template.authHeaderName === 'Authorization' ? `Token ${token}` : token) : undefined,
               }
             : { type: 'none' },
     }
@@ -178,7 +176,7 @@ function EditTemplateSource({
         </FormField>
 
         {template.authType !== 'none' && (
-          <FormField label={template.tokenLabel} required>
+          <FormField label={template.tokenLabel} required={!source.auth.hasSecret}>
             <input
               value={token}
               onChange={(e) => {
@@ -186,6 +184,8 @@ function EditTemplateSource({
                 setTestResult(null)
               }}
               type="password"
+              placeholder={source.auth.hasSecret ? 'Leave blank to keep existing' : ''}
+              required={!source.auth.hasSecret}
               style={inputStyle}
             />
           </FormField>
@@ -259,14 +259,14 @@ function EditTemplateSource({
   )
 }
 
-function EditCustomSource({ source, onSaved }: { source: Source; onSaved: () => void }) {
+function EditCustomSource({ source, onSaved }: { source: PublicSource; onSaved: () => void }) {
   const [slug, setSlug] = useState(source.slug)
   const [specUrl, setSpecUrl] = useState(source.specUrl ?? '')
   const [fallbackSpecUrl, setFallbackSpecUrl] = useState(source.fallbackSpecUrl ?? '')
   const [baseUrl, setBaseUrl] = useState(source.baseUrl)
   const [allowInvalidTls, setAllowInvalidTls] = useState(source.allowInvalidTls ?? false)
   const [authType, setAuthType] = useState(source.auth.type)
-  const [token, setToken] = useState(source.auth.token ?? source.auth.value ?? '')
+  const [token, setToken] = useState('')
   const [headerName, setHeaderName] = useState(source.auth.name ?? '')
   const [error, setError] = useState('')
 
@@ -282,9 +282,9 @@ function EditCustomSource({ source, onSaved }: { source: Source; onSaved: () => 
       allowInvalidTls,
       auth:
         authType === 'bearer'
-          ? { type: 'bearer', token }
+          ? { type: 'bearer', token: token || undefined }
           : authType === 'header'
-            ? { type: 'header', name: headerName, value: token }
+            ? { type: 'header', name: headerName, value: token || undefined }
             : { type: 'none' },
     }
     try {
@@ -360,12 +360,13 @@ function EditCustomSource({ source, onSaved }: { source: Source; onSaved: () => 
           </select>
         </FormField>
         {authType === 'bearer' && (
-          <FormField label="Token">
+          <FormField label="Token" required={!source.auth.hasSecret}>
             <input
               value={token}
               onChange={(e) => setToken(e.target.value)}
               type="password"
-              required
+              placeholder={source.auth.hasSecret ? 'Leave blank to keep existing' : ''}
+              required={!source.auth.hasSecret}
               style={inputStyle}
             />
           </FormField>
@@ -375,12 +376,13 @@ function EditCustomSource({ source, onSaved }: { source: Source; onSaved: () => 
             <FormField label="Header Name">
               <input value={headerName} onChange={(e) => setHeaderName(e.target.value)} required style={inputStyle} />
             </FormField>
-            <FormField label="Header Value">
+            <FormField label="Header Value" required={!source.auth.hasSecret}>
               <input
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 type="password"
-                required
+                placeholder={source.auth.hasSecret ? 'Leave blank to keep existing' : ''}
+                required={!source.auth.hasSecret}
                 style={inputStyle}
               />
             </FormField>

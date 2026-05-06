@@ -1,14 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { type Source } from '../../../lib/config'
 import { requireApiSession } from '../../../lib/require-auth'
-import { deleteSource, getSource, updateSource } from '../../../lib/sources-repo'
+import {
+  deleteSource,
+  getPublicSource,
+  getSource,
+  toPublicSource,
+  updateSourcePreservingSecret,
+} from '../../../lib/sources-repo'
 
 export const Route = createFileRoute('/api/sources/$slug')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
         await requireApiSession(request)
-        const source = await getSource(params.slug)
+        const source = await getPublicSource(params.slug)
         if (!source) {
           return Response.json({ error: 'Source not found' }, { status: 404 })
         }
@@ -22,8 +28,12 @@ export const Route = createFileRoute('/api/sources/$slug')({
         }
         const updates = (await request.json()) as Partial<Source>
         try {
-          const updated = await updateSource(params.slug, { ...existing, ...updates, slug: params.slug })
-          return Response.json(updated)
+          const updated = await updateSourcePreservingSecret(params.slug, {
+            ...existing,
+            ...updates,
+            slug: params.slug,
+          })
+          return Response.json(toPublicSource(updated))
         } catch (err) {
           return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 })
         }

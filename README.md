@@ -33,7 +33,8 @@ cp .env.example .env
 
 Fill in:
 
-- `ENCRYPTION_KEY` — `openssl rand -base64 32`. Used as Better Auth's session signing key **and** as the HKDF master for encrypting source credentials at rest.
+- `BETTER_AUTH_SECRET` — `openssl rand -base64 48`. Used by Better Auth for session signing.
+- `ENCRYPTION_KEY` — `openssl rand -base64 32`. HKDF master for encrypting source credentials at rest. Keep it stable across upgrades or stored source credentials become unreadable.
 - `AUTH_URL` — the public origin where this app is reachable (used in OAuth redirects). Defaults to `http://localhost:3000`.
 - `OIDC_ISSUER` — your provider's issuer URL. Better Auth fetches `/.well-known/openid-configuration` from here.
 - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` — register a client in your provider with redirect URI `${AUTH_URL}/api/auth/oauth2/callback/oidc`.
@@ -70,6 +71,7 @@ services:
 
 ```env
 PORT=3000
+BETTER_AUTH_SECRET=<openssl rand -base64 48>
 ENCRYPTION_KEY=<openssl rand -base64 32>
 AUTH_URL=https://homelab-agent.example.com
 
@@ -123,7 +125,7 @@ Upgrades:
 docker compose pull && docker compose up -d
 ```
 
-Migrations run automatically on boot. The `./data` volume persists across upgrades; the `ENCRYPTION_KEY` must stay stable or stored source credentials become unreadable.
+Migrations run automatically on boot. The `./data` volume persists across upgrades; keep both `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` stable. Changing `ENCRYPTION_KEY` makes stored source credentials unreadable.
 
 ## Contributing
 

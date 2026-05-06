@@ -3,3 +3,6 @@ dist
 .output
 docs
 *.md
+.env
+.env.*
+.deepsec

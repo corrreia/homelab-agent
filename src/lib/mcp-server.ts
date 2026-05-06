@@ -1,7 +1,7 @@
 import { openApiMcpServer } from '@cloudflare/codemode/mcp'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { RequestOptions } from '@cloudflare/codemode/mcp'
-import { NodeVmExecutor } from './node-vm-executor'
+import { QuickJsExecutor } from './quickjs-executor'
 import { mergeSpecs } from './spec-merger'
 import { getCachedMergedSpec, setCachedMergedSpec } from './spec-cache'
 import { type Source } from './config'
@@ -93,7 +93,7 @@ export async function ensureMergedSpec(): Promise<ReturnType<typeof getCachedMer
 }
 
 export async function buildMcpServer(): Promise<McpServer> {
-  const executor = new NodeVmExecutor()
+  const executor = new QuickJsExecutor()
   const merged = (await ensureMergedSpec())!
 
   const server = openApiMcpServer({

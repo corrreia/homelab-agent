@@ -7,15 +7,20 @@ import { db } from '../db'
 const OIDC_ISSUER = process.env.OIDC_ISSUER
 const OIDC_CLIENT_ID = process.env.OIDC_CLIENT_ID
 const OIDC_CLIENT_SECRET = process.env.OIDC_CLIENT_SECRET
+const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET
 
 if (!OIDC_ISSUER || !OIDC_CLIENT_ID || !OIDC_CLIENT_SECRET) {
   throw new Error('Missing OIDC env vars: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET')
 }
 
+if (!BETTER_AUTH_SECRET) {
+  throw new Error('Missing BETTER_AUTH_SECRET env var')
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'sqlite' }),
   baseURL: process.env.AUTH_URL ?? 'http://localhost:3000',
-  secret: process.env.ENCRYPTION_KEY,
+  secret: BETTER_AUTH_SECRET,
   emailAndPassword: { enabled: false },
   plugins: [
     genericOAuth({

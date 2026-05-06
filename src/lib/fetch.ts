@@ -1,5 +1,6 @@
 import http from 'node:http'
 import https from 'node:https'
+import { Readable } from 'node:stream'
 
 function toNodeHeaders(headers: Headers): Record<string, string | string[]> {
   const result: Record<string, string | string[]> = {}
@@ -43,12 +44,13 @@ async function fetchWithOptionalInvalidTls(
   allowInvalidTls: boolean,
 ): Promise<Response> {
   const target = new URL(url)
+  const requestInit: RequestInit = { ...init, redirect: 'manual' }
   if (!allowInvalidTls || target.protocol !== 'https:') {
-    return fetch(url, init)
+    return fetch(url, requestInit)
   }
 
-  const headers = new Headers(init.headers)
-  const body = await toRequestBody(init.body)
+  const headers = new Headers(requestInit.headers)
+  const body = await toRequestBody(requestInit.body)
 
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -59,21 +61,16 @@ async function fetchWithOptionalInvalidTls(
         agent: new https.Agent({ rejectUnauthorized: false }),
       },
       (res) => {
-        const chunks: Buffer[] = []
-        res.on('data', (chunk) => {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-        })
-        res.on('end', () => {
-          const status = res.statusCode ?? 500
-          const nullBody = status === 204 || status === 205 || status === 304
-          resolve(
-            new Response(nullBody ? null : Buffer.concat(chunks), {
-              status,
-              statusText: res.statusMessage ?? '',
-              headers: toResponseHeaders(res.headers),
-            }),
-          )
-        })
+        const status = res.statusCode ?? 500
+        const nullBody = status === 204 || status === 205 || status === 304
+        if (nullBody) res.resume()
+        resolve(
+          new Response(nullBody ? null : (Readable.toWeb(res) as ReadableStream), {
+            status,
+            statusText: res.statusMessage ?? '',
+            headers: toResponseHeaders(res.headers),
+          }),
+        )
       },
     )
 
@@ -107,22 +104,33 @@ function describeError(err: unknown): string {
   return causeStr ? `${err.message} → cause: ${causeStr}` : err.message
 }
 
+function redactedUrl(value: string): string {
+  try {
+    const url = new URL(value)
+    const queryMarker = url.search ? '?[redacted]' : ''
+    return `${url.origin}${url.pathname}${queryMarker}`
+  } catch {
+    return value.includes('?') ? `${value.split('?', 1)[0]}?[redacted]` : value
+  }
+}
+
 export async function loggedFetch(
   url: string,
   init: RequestInit,
   context: string,
   options?: { allowInvalidTls?: boolean },
 ): Promise<Response> {
+  const safeUrl = redactedUrl(url)
   try {
     const res = await fetchWithOptionalInvalidTls(url, init, options?.allowInvalidTls ?? false)
     if (!res.ok) {
-      console.warn(`[fetch] ${context} ${init.method ?? 'GET'} ${url} → ${res.status} ${res.statusText}`)
+      console.warn(`[fetch] ${context} ${init.method ?? 'GET'} ${safeUrl} → ${res.status} ${res.statusText}`)
     } else {
-      console.log(`[fetch] ${context} ${init.method ?? 'GET'} ${url} → ${res.status}`)
+      console.log(`[fetch] ${context} ${init.method ?? 'GET'} ${safeUrl} → ${res.status}`)
     }
     return res
   } catch (err) {
-    console.error(`[fetch] ${context} ${init.method ?? 'GET'} ${url} FAILED: ${describeError(err)}`)
+    console.error(`[fetch] ${context} ${init.method ?? 'GET'} ${safeUrl} FAILED: ${describeError(err)}`)
     throw err
   }
 }

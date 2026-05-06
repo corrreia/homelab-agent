@@ -9,6 +9,16 @@ import { getTemplate } from './templates'
 
 const ALLOWED_URL_SCHEMES = new Set(['http:', 'https:'])
 
+export interface PublicAuthConfig {
+  type: AuthConfig['type']
+  name?: string
+  hasSecret: boolean
+}
+
+export type PublicSource = Omit<Source, 'auth'> & {
+  auth: PublicAuthConfig
+}
+
 function validateHttpUrl(value: string, label: string): void {
   let parsed: URL
   try {
@@ -72,6 +82,25 @@ function rowToAuth(row: Row): AuthConfig {
   }
 }
 
+function toPublicAuth(auth: AuthConfig): PublicAuthConfig {
+  switch (auth.type) {
+    case 'bearer':
+      return { type: 'bearer', hasSecret: Boolean(auth.token) }
+    case 'header':
+      return { type: 'header', name: auth.name, hasSecret: Boolean(auth.value) }
+    case 'none':
+    default:
+      return { type: 'none', hasSecret: false }
+  }
+}
+
+export function toPublicSource(source: Source): PublicSource {
+  return {
+    ...source,
+    auth: toPublicAuth(source.auth),
+  }
+}
+
 function sourceToInsert(s: Source): Insert {
   const isCustom = s.kind === 'custom'
   return {
@@ -95,9 +124,19 @@ export async function getSources(): Promise<Source[]> {
   return rows.map(rowToSource)
 }
 
+export async function getPublicSources(): Promise<PublicSource[]> {
+  const sourceList = await getSources()
+  return sourceList.map(toPublicSource)
+}
+
 export async function getSource(slug: string): Promise<Source | null> {
   const row = db.select().from(sources).where(eq(sources.slug, slug)).get()
   return row ? rowToSource(row) : null
+}
+
+export async function getPublicSource(slug: string): Promise<PublicSource | null> {
+  const source = await getSource(slug)
+  return source ? toPublicSource(source) : null
 }
 
 export async function addSource(source: Source): Promise<Source> {
@@ -106,6 +145,24 @@ export async function addSource(source: Source): Promise<Source> {
   db.insert(sources).values(sourceToInsert(enriched)).run()
   invalidateMergedSpecCache()
   return enriched
+}
+
+function resolveAuthForUpdate(existing: AuthConfig, next: AuthConfig): AuthConfig {
+  switch (next.type) {
+    case 'none':
+      return { type: 'none' }
+    case 'bearer': {
+      const token = next.token || (existing.type === 'bearer' ? existing.token : undefined)
+      if (!token) throw new Error('Bearer token is required')
+      return { type: 'bearer', token }
+    }
+    case 'header': {
+      const value = next.value || (existing.type === 'header' ? existing.value : undefined)
+      if (!next.name) throw new Error('Header name is required')
+      if (!value) throw new Error('Header value is required')
+      return { type: 'header', name: next.name, value }
+    }
+  }
 }
 
 export async function updateSource(slug: string, source: Source): Promise<Source> {
@@ -118,6 +175,15 @@ export async function updateSource(slug: string, source: Source): Promise<Source
     .run()
   invalidateMergedSpecCache()
   return enriched
+}
+
+export async function updateSourcePreservingSecret(slug: string, source: Source): Promise<Source> {
+  const existing = await getSource(slug)
+  if (!existing) throw new Error('Source not found')
+  return updateSource(slug, {
+    ...source,
+    auth: resolveAuthForUpdate(existing.auth, source.auth),
+  })
 }
 
 export async function deleteSource(slug: string): Promise<void> {

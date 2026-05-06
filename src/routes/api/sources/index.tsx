@@ -1,14 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { type Source } from '../../../lib/config'
 import { requireApiSession } from '../../../lib/require-auth'
-import { addSource, getSources, sourceExists } from '../../../lib/sources-repo'
+import { addSource, getPublicSources, sourceExists, toPublicSource } from '../../../lib/sources-repo'
 
 export const Route = createFileRoute('/api/sources/')({
   server: {
     handlers: {
       GET: async ({ request }) => {
         await requireApiSession(request)
-        const sources = await getSources()
+        const sources = await getPublicSources()
         return Response.json(sources)
       },
       POST: async ({ request }) => {
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/api/sources/')({
         }
         try {
           const created = await addSource(source)
-          return Response.json(created, { status: 201 })
+          return Response.json(toPublicSource(created), { status: 201 })
         } catch (err) {
           return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 })
         }
