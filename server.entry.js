@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import server from './dist/server/server.js'
 
 const DB_PATH = join(process.cwd(), 'data', 'app.db')
 const MIGRATIONS_PATH = join(process.cwd(), 'migrations')
@@ -22,6 +21,8 @@ sqlite.pragma('journal_mode = WAL')
 migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_PATH })
 sqlite.close()
 console.log('[db] migrations applied')
+
+const { default: server } = await import('./dist/server/server.js')
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const clientDir = join(__dirname, 'dist', 'client')

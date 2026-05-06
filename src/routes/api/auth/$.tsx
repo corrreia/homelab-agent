@@ -1,24 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { auth } from '../../../lib/auth'
-import {
-  isAllowedMcpRedirectUri,
-  validateMcpCodeChallenge,
-  validateMcpRedirectUris,
-} from '../../../lib/mcp-oauth-guard'
+import { isAllowedMcpRedirectUri, validateMcpCodeChallenge } from '../../../lib/mcp-oauth-guard'
 
 async function guardMcpOAuthRequest(request: Request): Promise<Response | null> {
   const path = new URL(request.url).pathname
   const authPath = path.replace(/^\/api\/auth/, '')
 
   if (authPath === '/mcp/register' && request.method === 'POST') {
-    let body: unknown
-    try {
-      body = await request.clone().json()
-    } catch {
-      return Response.json({ error: 'Invalid MCP client registration body' }, { status: 400 })
-    }
-    const error = validateMcpRedirectUris((body as { redirect_uris?: unknown }).redirect_uris)
-    if (error) return Response.json({ error }, { status: 400 })
+    return Response.json({ error: 'MCP dynamic client registration is disabled' }, { status: 403 })
   }
 
   if (authPath === '/mcp/authorize' && request.method === 'GET') {

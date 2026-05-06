@@ -14,8 +14,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SourcesSlugRouteImport } from './routes/sources/$slug'
 import { Route as ApiSpecRouteImport } from './routes/api/spec'
-import { Route as ApiSourcesIndexRouteImport } from './routes/api/sources/index'
-import { Route as ApiSourcesSlugRouteImport } from './routes/api/sources/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiProxySlugSplatRouteImport } from './routes/api/proxy/$slug/$'
 
@@ -44,16 +42,6 @@ const ApiSpecRoute = ApiSpecRouteImport.update({
   path: '/api/spec',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSourcesIndexRoute = ApiSourcesIndexRouteImport.update({
-  id: '/api/sources/',
-  path: '/api/sources/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSourcesSlugRoute = ApiSourcesSlugRouteImport.update({
-  id: '/api/sources/$slug',
-  path: '/api/sources/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -72,8 +60,6 @@ export interface FileRoutesByFullPath {
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/sources/$slug': typeof ApiSourcesSlugRoute
-  '/api/sources/': typeof ApiSourcesIndexRoute
   '/api/proxy/$slug/$': typeof ApiProxySlugSplatRoute
 }
 export interface FileRoutesByTo {
@@ -83,8 +69,6 @@ export interface FileRoutesByTo {
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/sources/$slug': typeof ApiSourcesSlugRoute
-  '/api/sources': typeof ApiSourcesIndexRoute
   '/api/proxy/$slug/$': typeof ApiProxySlugSplatRoute
 }
 export interface FileRoutesById {
@@ -95,44 +79,14 @@ export interface FileRoutesById {
   '/api/spec': typeof ApiSpecRoute
   '/sources/$slug': typeof SourcesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/sources/$slug': typeof ApiSourcesSlugRoute
-  '/api/sources/': typeof ApiSourcesIndexRoute
   '/api/proxy/$slug/$': typeof ApiProxySlugSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/login'
-    | '/mcp'
-    | '/api/spec'
-    | '/sources/$slug'
-    | '/api/auth/$'
-    | '/api/sources/$slug'
-    | '/api/sources/'
-    | '/api/proxy/$slug/$'
+  fullPaths: '/' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/login'
-    | '/mcp'
-    | '/api/spec'
-    | '/sources/$slug'
-    | '/api/auth/$'
-    | '/api/sources/$slug'
-    | '/api/sources'
-    | '/api/proxy/$slug/$'
-  id:
-    | '__root__'
-    | '/'
-    | '/login'
-    | '/mcp'
-    | '/api/spec'
-    | '/sources/$slug'
-    | '/api/auth/$'
-    | '/api/sources/$slug'
-    | '/api/sources/'
-    | '/api/proxy/$slug/$'
+  to: '/' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
+  id: '__root__' | '/' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -142,8 +96,6 @@ export interface RootRouteChildren {
   ApiSpecRoute: typeof ApiSpecRoute
   SourcesSlugRoute: typeof SourcesSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiSourcesSlugRoute: typeof ApiSourcesSlugRoute
-  ApiSourcesIndexRoute: typeof ApiSourcesIndexRoute
   ApiProxySlugSplatRoute: typeof ApiProxySlugSplatRoute
 }
 
@@ -184,20 +136,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSpecRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/sources/': {
-      id: '/api/sources/'
-      path: '/api/sources'
-      fullPath: '/api/sources/'
-      preLoaderRoute: typeof ApiSourcesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sources/$slug': {
-      id: '/api/sources/$slug'
-      path: '/api/sources/$slug'
-      fullPath: '/api/sources/$slug'
-      preLoaderRoute: typeof ApiSourcesSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -222,8 +160,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSpecRoute: ApiSpecRoute,
   SourcesSlugRoute: SourcesSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiSourcesSlugRoute: ApiSourcesSlugRoute,
-  ApiSourcesIndexRoute: ApiSourcesIndexRoute,
   ApiProxySlugSplatRoute: ApiProxySlugSplatRoute,
 }
 export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
