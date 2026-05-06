@@ -71,8 +71,10 @@ services:
 
 ```env
 PORT=3000
-BETTER_AUTH_SECRET=<openssl rand -base64 48>
-ENCRYPTION_KEY=<openssl rand -base64 32>
+# Generate with: openssl rand -base64 48
+BETTER_AUTH_SECRET=
+# Generate with: openssl rand -base64 32
+ENCRYPTION_KEY=
 AUTH_URL=https://homelab-agent.example.com
 
 OIDC_ISSUER=https://auth.example.com
