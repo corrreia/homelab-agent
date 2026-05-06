@@ -37,6 +37,11 @@ export const auth = betterAuth({
     }),
     mcp({
       loginPage: '/login',
+      oidcConfig: {
+        loginPage: '/login',
+        requirePKCE: true,
+        allowPlainCodeChallengeMethod: false,
+      },
     }),
     tanstackStartCookies(),
   ],

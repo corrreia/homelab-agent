@@ -137,6 +137,7 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `BETTER_AUTH_SECRET` | Better Auth session signing secret. Required. |
 | `ENCRYPTION_KEY` | HKDF master for credential encryption. Required. |
 | `AUTH_URL` | Public origin (OAuth redirects). |
+| `MCP_ALLOWED_REDIRECT_URIS` | Optional comma-separated exact MCP OAuth redirect URIs beyond loopback callbacks. |
 | `OIDC_ISSUER` | OIDC issuer URL (any standards-compliant provider). |
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | OIDC client creds. |
 | `PORT` | Default `3000`. |

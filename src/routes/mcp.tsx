@@ -3,6 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { withMcpAuth } from 'better-auth/plugins'
 import { auth } from '../lib/auth'
 import { buildMcpServer } from '../lib/mcp-server'
+import { isExpiredMcpAccessToken } from '../lib/mcp-oauth-guard'
 
 const transports = new Map<string, WebStandardStreamableHTTPServerTransport>()
 
@@ -22,7 +23,18 @@ function createTransport(): WebStandardStreamableHTTPServerTransport {
   return transport
 }
 
-const handleMcpRequest = withMcpAuth(auth, async (request) => {
+const handleMcpRequest = withMcpAuth(auth, async (request, session) => {
+  if (isExpiredMcpAccessToken(session.accessTokenExpiresAt)) {
+    return new Response(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Unauthorized: access token expired' },
+        id: null,
+      }),
+      { status: 401, headers: { 'content-type': 'application/json', 'WWW-Authenticate': 'Bearer' } },
+    )
+  }
+
   const sessionId = request.headers.get('mcp-session-id') ?? undefined
 
   if (sessionId) {

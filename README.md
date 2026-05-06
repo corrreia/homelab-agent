@@ -36,6 +36,7 @@ Fill in:
 - `BETTER_AUTH_SECRET` — `openssl rand -base64 48`. Used by Better Auth for session signing.
 - `ENCRYPTION_KEY` — `openssl rand -base64 32`. HKDF master for encrypting source credentials at rest. Keep it stable across upgrades or stored source credentials become unreadable.
 - `AUTH_URL` — the public origin where this app is reachable (used in OAuth redirects). Defaults to `http://localhost:3000`.
+- `MCP_ALLOWED_REDIRECT_URIS` — optional comma-separated exact MCP OAuth redirect URIs beyond loopback callbacks. By default, MCP OAuth clients may only register `http://localhost`, `http://127.0.0.1`, or `http://[::1]` redirect URIs.
 - `OIDC_ISSUER` — your provider's issuer URL. Better Auth fetches `/.well-known/openid-configuration` from here.
 - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` — register a client in your provider with redirect URI `${AUTH_URL}/api/auth/oauth2/callback/oidc`.
 
@@ -74,6 +75,7 @@ PORT=3000
 BETTER_AUTH_SECRET=<openssl rand -base64 48>
 ENCRYPTION_KEY=<openssl rand -base64 32>
 AUTH_URL=https://homelab-agent.example.com
+MCP_ALLOWED_REDIRECT_URIS=
 
 OIDC_ISSUER=https://auth.example.com
 OIDC_CLIENT_ID=<from your provider>

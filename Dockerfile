@@ -1,4 +1,4 @@
-FROM node:22-slim AS build
+FROM node:22-slim@sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c AS build
 
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
@@ -9,7 +9,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-FROM node:22-slim AS runtime
+FROM node:22-slim@sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c AS runtime
 
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
