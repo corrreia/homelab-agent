@@ -4,6 +4,7 @@ import { loggedFetch } from './fetch'
 export function getSourceBasePath(source: Source): string {
   if (source.apiBasePath) return source.apiBasePath
   if (source.slug === 'seerr') return '/api/v1'
+  if (source.slug === 'portainer') return '/api'
   if (source.slug === 'bazarr') return '/api'
   return ''
 }

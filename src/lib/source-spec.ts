@@ -78,6 +78,11 @@ function substituteServerVariables(url: string, variables: unknown): string {
 }
 
 function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
+  if (typeof spec.basePath === 'string') {
+    const basePath = normalizeBasePath(spec.basePath)
+    if (basePath) return basePath
+  }
+
   const servers = Array.isArray(spec.servers) ? spec.servers : []
   const firstServer = servers[0]
   if (!firstServer || typeof firstServer !== 'object' || firstServer === null) {
@@ -97,11 +102,16 @@ function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
 
   try {
     const parsed = new URL(resolvedUrl, 'http://localhost')
-    const basePath = parsed.pathname.replace(/\/+$/, '')
-    return basePath === '' || basePath === '/' ? undefined : basePath
+    return normalizeBasePath(parsed.pathname)
   } catch {
     return undefined
   }
+}
+
+function normalizeBasePath(value: string): string | undefined {
+  const basePath = value.trim().replace(/\/+$/, '')
+  if (basePath === '' || basePath === '/') return undefined
+  return basePath.startsWith('/') ? basePath : `/${basePath}`
 }
 
 export async function withInferredApiBasePath(source: Source): Promise<Source> {

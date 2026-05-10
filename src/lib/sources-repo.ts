@@ -29,6 +29,12 @@ function validateHttpUrl(value: string, label: string): void {
   if (!ALLOWED_URL_SCHEMES.has(parsed.protocol)) {
     throw new Error(`${label} must use http or https (got "${parsed.protocol}")`)
   }
+  if (parsed.username || parsed.password) {
+    throw new Error(`${label} must not include username or password credentials`)
+  }
+  if (parsed.search) {
+    throw new Error(`${label} must not include query parameters; use the encrypted auth fields for credentials`)
+  }
 }
 
 function validateSource(source: Source): void {
@@ -97,7 +103,22 @@ function toPublicAuth(auth: AuthConfig): PublicAuthConfig {
 export function toPublicSource(source: Source): PublicSource {
   return {
     ...source,
+    baseUrl: redactPublicUrl(source.baseUrl),
+    specUrl: source.specUrl ? redactPublicUrl(source.specUrl) : undefined,
+    fallbackSpecUrl: source.fallbackSpecUrl ? redactPublicUrl(source.fallbackSpecUrl) : undefined,
     auth: toPublicAuth(source.auth),
+  }
+}
+
+function redactPublicUrl(value: string): string {
+  try {
+    const url = new URL(value)
+    url.username = ''
+    url.password = ''
+    url.search = ''
+    return url.toString()
+  } catch {
+    return value
   }
 }
 

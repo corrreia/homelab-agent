@@ -10,6 +10,10 @@ async function guardMcpOAuthRequest(request: Request): Promise<Response | null> 
     return Response.json({ error: 'MCP dynamic client registration is disabled' }, { status: 403 })
   }
 
+  if (authPath === '/mcp/get-session') {
+    return Response.json({ error: 'MCP session introspection is disabled' }, { status: 403 })
+  }
+
   if (authPath === '/mcp/authorize' && request.method === 'GET') {
     const url = new URL(request.url)
     const redirectUri = url.searchParams.get('redirect_uri')
