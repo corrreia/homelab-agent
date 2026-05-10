@@ -6,10 +6,6 @@ async function guardMcpOAuthRequest(request: Request): Promise<Response | null> 
   const path = new URL(request.url).pathname
   const authPath = path.replace(/^\/api\/auth/, '')
 
-  if (authPath === '/mcp/register' && request.method === 'POST') {
-    return Response.json({ error: 'MCP dynamic client registration is disabled' }, { status: 403 })
-  }
-
   if (authPath === '/mcp/get-session') {
     return Response.json({ error: 'MCP session introspection is disabled' }, { status: 403 })
   }
