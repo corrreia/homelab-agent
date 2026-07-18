@@ -42,7 +42,24 @@ export class QuickJsExecutor implements Executor {
       const result = vm.evalCode(`Promise.resolve((${code})())`)
       const promiseHandle = vm.unwrapResult(result)
       try {
-        const resolved = await this.withTimeout(vm.resolvePromise(promiseHandle))
+        const settledPromise = vm.resolvePromise(promiseHandle)
+        // Pump the QuickJS job queue until the sandbox promise settles. Host
+        // provider callbacks pump it in their `.finally`, but sandbox-only async
+        // (e.g. the `search` tool's in-sandbox `codemode.spec()`, which runs with
+        // no provider callback) has nothing to trigger a pump and would otherwise
+        // hang until the timeout. Yield to the macrotask queue between pumps so
+        // pending host `request()` promises can also make progress.
+        const settledMarker = settledPromise.then(
+          () => true,
+          () => true,
+        )
+        for (;;) {
+          vm.runtime.executePendingJobs()
+          const tick = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 0))
+          if (await Promise.race([settledMarker, tick])) break
+          if (Date.now() > deadline) break
+        }
+        const resolved = await this.withTimeout(settledPromise)
         const valueHandle = vm.unwrapResult(resolved)
         try {
           return { result: vm.dump(valueHandle), logs }
