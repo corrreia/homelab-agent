@@ -22,14 +22,49 @@ import yaml from 'js-yaml'
 
 /** @type {Array<{ slug: string, out: string, url: string, format: 'json' | 'yaml' }>} */
 const SOURCES = [
-  { slug: 'immich', out: 'immich.json', format: 'json', url: 'https://raw.githubusercontent.com/immich-app/immich/main/open-api/immich-openapi-specs.json' },
-  { slug: 'sonarr', out: 'sonarr.json', format: 'json', url: 'https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/Sonarr.Api.V3/openapi.json' },
-  { slug: 'radarr', out: 'radarr.json', format: 'json', url: 'https://raw.githubusercontent.com/Radarr/Radarr/develop/src/Radarr.Api.V3/openapi.json' },
-  { slug: 'prowlarr', out: 'prowlarr.json', format: 'json', url: 'https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/src/Prowlarr.Api.V1/openapi.json' },
-  { slug: 'lidarr', out: 'lidarr.json', format: 'json', url: 'https://raw.githubusercontent.com/Lidarr/Lidarr/develop/src/Lidarr.Api.V1/openapi.json' },
-  { slug: 'seerr', out: 'seerr.json', format: 'yaml', url: 'https://raw.githubusercontent.com/fallenbagel/jellyseerr/develop/seerr-api.yml' },
+  {
+    slug: 'immich',
+    out: 'immich.json',
+    format: 'json',
+    url: 'https://raw.githubusercontent.com/immich-app/immich/main/open-api/immich-openapi-specs.json',
+  },
+  {
+    slug: 'sonarr',
+    out: 'sonarr.json',
+    format: 'json',
+    url: 'https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/Sonarr.Api.V3/openapi.json',
+  },
+  {
+    slug: 'radarr',
+    out: 'radarr.json',
+    format: 'json',
+    url: 'https://raw.githubusercontent.com/Radarr/Radarr/develop/src/Radarr.Api.V3/openapi.json',
+  },
+  {
+    slug: 'prowlarr',
+    out: 'prowlarr.json',
+    format: 'json',
+    url: 'https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/src/Prowlarr.Api.V1/openapi.json',
+  },
+  {
+    slug: 'lidarr',
+    out: 'lidarr.json',
+    format: 'json',
+    url: 'https://raw.githubusercontent.com/Lidarr/Lidarr/develop/src/Lidarr.Api.V1/openapi.json',
+  },
+  {
+    slug: 'seerr',
+    out: 'seerr.json',
+    format: 'yaml',
+    url: 'https://raw.githubusercontent.com/fallenbagel/jellyseerr/develop/seerr-api.yml',
+  },
   // Portainer's Swagger 2.0 doc (matches the currently-bundled format; openapi.yaml is 3.0 but changes path/schema semantics).
-  { slug: 'portainer', out: 'portainer.json', format: 'yaml', url: 'https://raw.githubusercontent.com/portainer/portainer/develop/api/docs/swagger.yaml' },
+  {
+    slug: 'portainer',
+    out: 'portainer.json',
+    format: 'yaml',
+    url: 'https://raw.githubusercontent.com/portainer/portainer/develop/api/docs/swagger.yaml',
+  },
 ]
 
 const SPECS_DIR = join(process.cwd(), 'specs')
@@ -63,7 +98,9 @@ let failed = 0
 for (const source of SOURCES) {
   try {
     const { oldVersion, newVersion, paths } = await refresh(source)
-    console.log(`✓ ${source.slug.padEnd(10)} ${String(oldVersion).padEnd(10)} → ${String(newVersion).padEnd(10)} (${paths} paths)`)
+    console.log(
+      `✓ ${source.slug.padEnd(10)} ${String(oldVersion).padEnd(10)} → ${String(newVersion).padEnd(10)} (${paths} paths)`,
+    )
     updated++
   } catch (err) {
     console.error(`✗ ${source.slug.padEnd(10)} ${err instanceof Error ? err.message : String(err)}`)

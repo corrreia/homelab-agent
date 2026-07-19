@@ -49,18 +49,27 @@ remote-write("proxmox", "/tmp/x.sh", contents)
 
 ## MCP tools
 
-Registered in `buildMcpServer` on the `McpServer` after `openApiMcpServer` creates it.
+A proper remote mirror of the coding-agent toolkit (Read/Write/Edit/Bash/Glob/Grep) — same
+ergonomics, executed over SSH. Registered in `buildMcpServer` on the `McpServer` after
+`openApiMcpServer` creates it.
 
-| Tool | Args (zod) | Confirm | Returns |
-|---|---|---|---|
-| `remote-bash` | `host: string, command: string` | yes (per run/host) | `{ stdout, stderr, exitCode }` |
-| `remote-read` | `host: string, path: string` | no | `{ content }` (capped) |
-| `remote-edit` | `host, path, old_string, new_string` | yes | `{ ok, replaced }` |
-| `remote-write` | `host, path, content` | yes | `{ ok, bytes }` |
+| Tool | Args (zod) | Confirm | Mirrors | Returns |
+|---|---|---|---|---|
+| `remote-bash` | `host, command, timeout?` | yes (per run/host) | Bash | `{ stdout, stderr, exitCode }` |
+| `remote-read` | `host, path, offset?, limit?` | no | Read | `cat -n`-style numbered lines |
+| `remote-write` | `host, path, content` | yes | Write | `{ ok, bytes }` |
+| `remote-edit` | `host, path, old_string, new_string, replace_all?` | yes | Edit | `{ ok, replacements }` |
+| `remote-glob` | `host, pattern, path?` | no | Glob | matching paths (via `find`) |
+| `remote-grep` | `host, pattern, path?, glob?, ignore_case?` | no | Grep | matches (via `rg`, fallback `grep -rn`) |
 
+- **Read** returns numbered lines (`cat -n` style) with `offset`/`limit`, like the agent
+  Read tool. **Edit** requires `old_string` to occur exactly once unless `replace_all`.
+  **Glob/Grep** are reads (unconfirmed); **Bash/Write/Edit** are mutating (confirmed).
 - Output/content **capped ~6k tokens** (matching codemode truncation) so a large read
   can't blow up context; truncation is marked.
 - Unknown `host` slug → model-actionable error listing known hosts.
+- Implementation runs the read/search helpers as SSH commands (`sed -n`, `find`, `rg`);
+  Read/Write/Edit fetch and store file bytes over SFTP for exactness and atomic writes.
 
 ## SSH execution layer (`src/lib/ssh.ts`)
 

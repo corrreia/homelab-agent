@@ -9,6 +9,7 @@ import { getSourceBasePath } from './proxy'
 import { getSource, getSources } from './sources-repo'
 import { loggedFetch } from './fetch'
 import { confirmWrite, emitProgress, isMutatingMethod, type McpRequestContext } from './mcp-elicitation'
+import { registerRemoteTools } from './mcp-remote-tools'
 
 function getAuthHeaders(source: Source): Record<string, string> {
   switch (source.auth.type) {
@@ -133,6 +134,9 @@ export async function buildMcpServer(): Promise<McpServer> {
     description: 'Combined API gateway exposing multiple OpenAPI services',
   })
   serverHolder.current = server
+
+  // Remote SSH toolkit (remote-bash/read/write/edit/glob/grep) alongside search/execute.
+  registerRemoteTools(server, supportsElicitation)
 
   return server
 }

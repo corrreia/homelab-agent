@@ -1,6 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isMutatingMethod, confirmWrite, emitProgress, __resetRunStateForTests } from '../src/lib/mcp-elicitation.ts'
+import {
+  isMutatingMethod,
+  confirmWrite,
+  confirmAction,
+  emitProgress,
+  __resetRunStateForTests,
+} from '../src/lib/mcp-elicitation.ts'
 
 // A stand-in for RequestHandlerExtra. `sendRequest` / `sendNotification` are stubbed
 // so we can assert what the host tried to send the client. Every call within one
@@ -84,6 +90,28 @@ test('no elicitation support: fail open, warn once', async () => {
   assert.equal(second, true)
   assert.equal(sentRequests.length, 0, 'never prompts a client that cannot elicit')
   assert.equal(warnings.length, 1, 'warns once per source per run')
+})
+
+test('confirmAction failClosed: no elicitation support → blocked (denied), warned', async () => {
+  __resetRunStateForTests()
+  const warnings: string[] = []
+  const { context, sentRequests } = makeContext({})
+  const allowed = await confirmAction(context as never, 'host:nas', 'Allow?', false, (m) => warnings.push(m), {
+    failClosed: true,
+  })
+  assert.equal(allowed, false, 'SSH fails closed when the client cannot elicit')
+  assert.equal(sentRequests.length, 0)
+  assert.match(warnings[0]!, /blocked/)
+})
+
+test('confirmAction failClosed with elicitation: approve grants, cached per resourceKey', async () => {
+  __resetRunStateForTests()
+  const { context, sentRequests } = makeContext({ elicitReply: { action: 'accept', content: { approve: true } } })
+  const first = await confirmAction(context as never, 'host:nas', 'Allow?', true, () => {}, { failClosed: true })
+  const second = await confirmAction(context as never, 'host:nas', 'Allow?', true, () => {}, { failClosed: true })
+  assert.equal(first, true)
+  assert.equal(second, true)
+  assert.equal(sentRequests.length, 1, 'once per run per host')
 })
 
 test('emitProgress sends a notification only when the client supplied a progressToken', async () => {

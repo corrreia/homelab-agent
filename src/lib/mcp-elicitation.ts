@@ -38,13 +38,25 @@ export function __resetRunStateForTests(): void {
  * - Fail open: a client with no elicitation support is allowed through, with a one-time warning.
  * - Denied on decline, timeout, or cancellation.
  */
-export async function confirmWrite(
+export interface ConfirmOptions {
+  /**
+   * When the client cannot elicit: `false` (default) allows the action with a warning
+   * (HTTP writes); `true` blocks it (SSH — too high-stakes to run unattended).
+   */
+  failClosed?: boolean
+}
+
+/**
+ * Ask the human to approve an action once per run, keyed by `resourceKey` (e.g. `src:sonarr`
+ * or `host:nas`). Returns true if it may proceed. Decision is cached for the run.
+ */
+export async function confirmAction(
   context: McpRequestContext,
-  slug: string,
-  method: string,
-  path: string,
+  resourceKey: string,
+  promptMessage: string,
   clientSupportsElicitation: boolean,
   warn: (message: string) => void,
+  options: ConfirmOptions = {},
 ): Promise<boolean> {
   let grants = runGrants.get(context)
   if (!grants) {
@@ -52,13 +64,15 @@ export async function confirmWrite(
     runGrants.set(context, grants)
   }
 
-  const cached = grants.get(slug)
+  const cached = grants.get(resourceKey)
   if (cached) return cached === 'granted'
 
   if (!clientSupportsElicitation) {
-    warn(`unconfirmed write to "${slug}" (${method} ${path}) — client has no elicitation support`)
-    grants.set(slug, 'granted')
-    return true
+    const failClosed = options.failClosed ?? false
+    warn(`${failClosed ? 'blocked' : 'unconfirmed'} action on ${resourceKey} — client has no elicitation support`)
+    const decision: Decision = failClosed ? 'denied' : 'granted'
+    grants.set(resourceKey, decision)
+    return decision === 'granted'
   }
 
   let decision: Decision = 'denied'
@@ -67,14 +81,14 @@ export async function confirmWrite(
       {
         method: 'elicitation/create',
         params: {
-          message: `Allow writes to "${slug}" for this execution? Triggered by ${method} ${path}.`,
+          message: promptMessage,
           requestedSchema: {
             type: 'object',
             properties: {
               approve: {
                 type: 'boolean',
-                title: `Approve writes to "${slug}"`,
-                description: 'Applies to every write to this source during this run.',
+                title: 'Approve',
+                description: 'Applies to every action on this resource during this run.',
               },
             },
             required: ['approve'],
@@ -92,8 +106,27 @@ export async function confirmWrite(
     decision = 'denied'
   }
 
-  grants.set(slug, decision)
+  grants.set(resourceKey, decision)
   return decision === 'granted'
+}
+
+/** HTTP write confirmation (fail-open) — thin wrapper over {@link confirmAction}. */
+export function confirmWrite(
+  context: McpRequestContext,
+  slug: string,
+  method: string,
+  path: string,
+  clientSupportsElicitation: boolean,
+  warn: (message: string) => void,
+): Promise<boolean> {
+  return confirmAction(
+    context,
+    `src:${slug}`,
+    `Allow writes to "${slug}" for this execution? Triggered by ${method} ${path}.`,
+    clientSupportsElicitation,
+    warn,
+    { failClosed: false },
+  )
 }
 
 /**
