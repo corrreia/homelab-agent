@@ -107,6 +107,7 @@ pnpm db:generate      # new drizzle migration from schema changes
 pnpm db:migrate       # apply pending migrations
 pnpm db:studio        # drizzle studio
 pnpm test             # node:test unit tests via tsx (test/*.test.mts)
+pnpm update-specs     # refresh bundled specs/ from upstream (scripts/update-specs.mjs)
 ```
 
 Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/routes/index.tsx` and `src/routes/sources/$slug.tsx` around TanStack Start server-function typings — ignore those unless your change touches those lines.
@@ -127,7 +128,8 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `src/lib/quickjs-executor.ts` | QuickJS-based Code Mode executor |
 | `src/lib/spec-merger.ts` | Combine per-source specs into one |
 | `src/lib/templates.ts` | Built-in source templates |
-| `specs/` | Bundled OpenAPI JSONs |
+| `specs/` | Bundled OpenAPI JSONs (refresh via `pnpm update-specs`; bazarr/jellyfin/unifi are manual) |
+| `scripts/update-specs.mjs` | Pulls bundled specs from canonical upstream URLs |
 | `migrations/` | Drizzle migrations (checked in) |
 | `server.entry.js` | Prod entrypoint (migrate → serve) |
 | `.github/workflows/release.yml` | Builds + pushes multi-arch image to GHCR on tag/`main` |

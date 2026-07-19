@@ -23,7 +23,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "prepare": "husky || true",
-    "test": "tsx --test test/*.test.mts"
+    "test": "tsx --test test/*.test.mts",
+    "update-specs": "node scripts/update-specs.mjs"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
