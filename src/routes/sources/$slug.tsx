@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { type Source } from '../../lib/config'
+import { listHosts } from '../../lib/hosts-repo'
 import { requireCurrentSession } from '../../lib/require-auth'
 import {
   getPublicSource as repoGetPublicSource,
   type PublicSource,
+  setSourceHost as repoSetSourceHost,
   updateSourcePreservingSecret as repoUpdateSource,
 } from '../../lib/sources-repo'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../../lib/test-connection'
@@ -21,6 +23,19 @@ const updateSource = createServerFn({ method: 'POST' }).handler(
   async ({ data }: { data: { slug: string; source: Source } }) => {
     await requireCurrentSession()
     await repoUpdateSource(data.slug, data.source)
+    return { ok: true }
+  },
+)
+
+const listHostOptions = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireCurrentSession()
+  return (await listHosts()).map((h) => ({ slug: h.slug, label: h.label }))
+})
+
+const linkSourceHost = createServerFn({ method: 'POST' }).handler(
+  async ({ data }: { data: { slug: string; hostSlug: string | null } }) => {
+    await requireCurrentSession()
+    await repoSetSourceHost(data.slug, data.hostSlug)
     return { ok: true }
   },
 )
@@ -50,12 +65,8 @@ function EditSourcePage() {
 
   const onSaved = () => navigate({ to: '/' })
 
-  if (source.kind === 'custom') {
-    return <EditCustomSource source={source} onSaved={onSaved} />
-  }
-
-  const template = templates.find((t) => t.id === source.kind)
-  if (!template) {
+  const template = source.kind === 'custom' ? undefined : templates.find((t) => t.id === source.kind)
+  if (source.kind !== 'custom' && !template) {
     return (
       <p style={{ color: colors.error }}>
         Source "{slug}" references unknown template "{source.kind}". Edit the database directly.
@@ -63,7 +74,64 @@ function EditSourcePage() {
     )
   }
 
-  return <EditTemplateSource source={source} template={template} onSaved={onSaved} />
+  return (
+    <>
+      <SourceHostLink slug={source.slug} current={source.hostSlug ?? null} />
+      {template ? (
+        <EditTemplateSource source={source} template={template} onSaved={onSaved} />
+      ) : (
+        <EditCustomSource source={source} onSaved={onSaved} />
+      )}
+    </>
+  )
+}
+
+/** Small self-contained control: link this source to the SSH host it runs on. */
+function SourceHostLink({ slug, current }: { slug: string; current: string | null }) {
+  const [hosts, setHosts] = useState<Array<{ slug: string; label: string }>>([])
+  const [value, setValue] = useState(current ?? '')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    void listHostOptions().then(setHosts)
+  }, [])
+
+  async function onChange(next: string) {
+    setValue(next)
+    await linkSourceHost({ data: { slug, hostSlug: next || null } })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1200)
+  }
+
+  return (
+    <section style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <span style={{ fontSize: '0.8rem', color: colors.textMuted }}>Runs on host</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          background: colors.bgInput,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '6px',
+          color: colors.text,
+          padding: '0.4rem 0.5rem',
+          fontSize: '0.85rem',
+          fontFamily: fonts.body,
+        }}
+      >
+        <option value="">— none —</option>
+        {hosts.map((h) => (
+          <option key={h.slug} value={h.slug}>
+            {h.label} ({h.slug})
+          </option>
+        ))}
+      </select>
+      {saved && <span style={{ color: colors.success, fontSize: '0.78rem' }}>saved</span>}
+      {hosts.length === 0 && (
+        <span style={{ color: colors.textDim, fontSize: '0.78rem' }}>no hosts registered yet</span>
+      )}
+    </section>
+  )
 }
 
 function EditTemplateSource({
