@@ -4,13 +4,18 @@ import type { Executor, ExecuteResult, ResolvedProvider } from './codemode-types
 
 type FnMap = Record<string, (...args: unknown[]) => Promise<unknown>>
 
+// How often to pump the QuickJS job queue while awaiting a sandbox promise. Small
+// enough that in-sandbox async (the `search` tool) stays snappy, large enough that a
+// long-blocking host call (e.g. a pending confirmation prompt) doesn't hot-spin.
+const PUMP_INTERVAL_MS = 5
+
 export class QuickJsExecutor implements Executor {
   private timeout: number
   private memoryLimitBytes: number
   private stackSizeBytes: number
 
   constructor(options?: { timeout?: number; memoryLimitBytes?: number; stackSizeBytes?: number }) {
-    this.timeout = options?.timeout ?? 30_000
+    this.timeout = options?.timeout ?? 120_000
     this.memoryLimitBytes = options?.memoryLimitBytes ?? 32 * 1024 * 1024
     this.stackSizeBytes = options?.stackSizeBytes ?? 512 * 1024
   }
@@ -55,7 +60,7 @@ export class QuickJsExecutor implements Executor {
         )
         for (;;) {
           vm.runtime.executePendingJobs()
-          const tick = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 0))
+          const tick = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), PUMP_INTERVAL_MS))
           if (await Promise.race([settledMarker, tick])) break
           if (Date.now() > deadline) break
         }

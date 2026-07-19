@@ -8,6 +8,7 @@ import { type Source } from './config'
 import { getSourceBasePath } from './proxy'
 import { getSource, getSources } from './sources-repo'
 import { loggedFetch } from './fetch'
+import { confirmWrite, emitProgress, isMutatingMethod, type McpRequestContext } from './mcp-elicitation'
 
 function getAuthHeaders(source: Source): Record<string, string> {
   switch (source.auth.type) {
@@ -24,7 +25,11 @@ function getAuthHeaders(source: Source): Record<string, string> {
   }
 }
 
-async function makeRequest(options: RequestOptions): Promise<unknown> {
+async function makeRequest(
+  options: RequestOptions,
+  context: McpRequestContext,
+  supportsElicitation: () => boolean,
+): Promise<unknown> {
   // Extract slug from the path (first segment)
   const pathParts = options.path.split('/').filter(Boolean)
   const slug = pathParts[0]
@@ -33,6 +38,24 @@ async function makeRequest(options: RequestOptions): Promise<unknown> {
   const source = await getSource(slug!)
   if (!source) {
     throw new Error(`Unknown source: ${slug}`)
+  }
+
+  // Heartbeat for clients that asked for progress (no-op otherwise).
+  emitProgress(context, `${options.method} ${source.slug}${restPath}`)
+
+  // Gate mutating calls behind human approval, once per run per source.
+  if (isMutatingMethod(options.method)) {
+    const approved = await confirmWrite(
+      context,
+      source.slug,
+      options.method,
+      restPath,
+      supportsElicitation(),
+      (message) => console.warn(`[mcp] ${message}`),
+    )
+    if (!approved) {
+      throw new Error(`Write to "${source.slug}" was not approved (${options.method} ${restPath})`)
+    }
   }
 
   const baseUrl = source.baseUrl.replace(/\/+$/, '')
@@ -96,14 +119,20 @@ export async function buildMcpServer(): Promise<McpServer> {
   const executor = new QuickJsExecutor()
   const merged = (await ensureMergedSpec())!
 
+  // openApiMcpServer needs the request callback at construction, but the callback
+  // needs the server to read client capabilities — resolve the cycle with a holder.
+  const serverHolder: { current: McpServer | undefined } = { current: undefined }
+  const supportsElicitation = (): boolean => Boolean(serverHolder.current?.server.getClientCapabilities()?.elicitation)
+
   const server = openApiMcpServer({
     spec: merged.spec,
     executor,
-    request: makeRequest,
+    request: (options, context) => makeRequest(options, context, supportsElicitation),
     name: 'homelab-agent',
     version: '0.1.0',
     description: 'Combined API gateway exposing multiple OpenAPI services',
   })
+  serverHolder.current = server
 
   return server
 }

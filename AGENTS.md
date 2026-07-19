@@ -80,7 +80,7 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 - **TanStack Start** (React 19, SSR) — file-based routes in `src/routes/`. `createServerFn` handlers live alongside components; `server` handlers under `src/routes/api/*` are the HTTP API.
 - **Auth:** Better Auth + generic OIDC via `genericOAuth` (any standards-compliant issuer — Pocket ID, Authentik, Keycloak, Auth0, …). Config in `src/lib/auth.ts`. `/mcp` is additionally gated by Better Auth's `mcp` plugin.
 - **Storage:** Drizzle + `better-sqlite3` at `data/app.db`. Schema in `src/db/schema.ts`, migrations in `migrations/` (generate with `pnpm db:generate`, apply with `pnpm db:migrate`). Migrations live outside `data/` so that mounting `./data` as a Docker volume doesn't clobber them.
-- **MCP:** `@cloudflare/codemode` exposes two tools (`search`/`execute`) over a merged OpenAPI spec. Entry point: `src/lib/mcp-server.ts`. Executor is `src/lib/quickjs-executor.ts`.
+- **MCP:** `@cloudflare/codemode` exposes two tools (`search`/`execute`) over a merged OpenAPI spec. Entry point: `src/lib/mcp-server.ts`. Executor is `src/lib/quickjs-executor.ts`. Mutating calls (POST/PUT/PATCH/DELETE) from sandbox code are gated behind MCP elicitation (`src/lib/mcp-elicitation.ts`): approval is asked once per run per source; clients without elicitation support fail open with a warning.
 - **Proxy:** `src/lib/proxy.ts` forwards `/api/proxy/:slug/*` to the upstream, injecting creds from the DB. Request headers are allow-listed; response headers are allow-listed too.
 - **Sources:** User-added upstream services. Bundled OpenAPI templates live in `specs/`, wired via `src/lib/templates.ts` + `src/lib/bundled-specs.ts`. Custom sources fetch their spec at runtime (`src/lib/source-spec.ts`).
 
@@ -106,6 +106,7 @@ pnpm format           # oxfmt
 pnpm db:generate      # new drizzle migration from schema changes
 pnpm db:migrate       # apply pending migrations
 pnpm db:studio        # drizzle studio
+pnpm test             # node:test unit tests via tsx (test/*.test.mts)
 ```
 
 Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/routes/index.tsx` and `src/routes/sources/$slug.tsx` around TanStack Start server-function typings — ignore those unless your change touches those lines.
@@ -122,6 +123,7 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `src/lib/encryption.ts` | AES-GCM helpers + HKDF |
 | `src/lib/proxy.ts` | `/api/proxy/:slug/*` forwarding |
 | `src/lib/mcp-server.ts` | Code Mode MCP server wiring |
+| `src/lib/mcp-elicitation.ts` | MCP write-confirmation + progress helpers |
 | `src/lib/quickjs-executor.ts` | QuickJS-based Code Mode executor |
 | `src/lib/spec-merger.ts` | Combine per-source specs into one |
 | `src/lib/templates.ts` | Built-in source templates |
