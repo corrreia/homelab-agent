@@ -97,20 +97,31 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
               MCP
             </span>
           </div>
-          <Link
-            to="/"
-            style={{
-              color: colors.textMuted,
-              textDecoration: 'none',
-              padding: '0.4rem 0.75rem',
-              borderRadius: '6px',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-            }}
-            activeProps={{ style: { color: colors.text, background: colors.bgCard } }}
-          >
-            Services
-          </Link>
+          <nav style={{ display: 'flex', gap: '0.25rem' }}>
+            {(
+              [
+                { to: '/', label: 'Services' },
+                { to: '/hosts', label: 'Hosts' },
+              ] as const
+            ).map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                activeOptions={{ exact: true }}
+                style={{
+                  color: colors.textMuted,
+                  textDecoration: 'none',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                }}
+                activeProps={{ style: { color: colors.text, background: colors.bgCard } }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </header>
         <main style={{ maxWidth: '960px', margin: '0 auto', padding: '2rem' }}>{children}</main>
         <Scripts />

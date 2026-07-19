@@ -9,17 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SourcesSlugRouteImport } from './routes/sources/$slug'
+import { Route as HostsRouteImport } from './routes/hosts'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ApiSpecRouteImport } from './routes/api/spec'
+import { Route as SourcesSlugRouteImport } from './routes/sources/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiProxySlugSplatRouteImport } from './routes/api/proxy/$slug/$'
 
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HostsRoute = HostsRouteImport.update({
+  id: '/hosts',
+  path: '/hosts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -27,19 +33,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SourcesSlugRoute = SourcesSlugRouteImport.update({
-  id: '/sources/$slug',
-  path: '/sources/$slug',
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSpecRoute = ApiSpecRouteImport.update({
   id: '/api/spec',
   path: '/api/spec',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SourcesSlugRoute = SourcesSlugRouteImport.update({
+  id: '/sources/$slug',
+  path: '/sources/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -55,6 +61,7 @@ const ApiProxySlugSplatRoute = ApiProxySlugSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/hosts': typeof HostsRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/api/spec': typeof ApiSpecRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hosts': typeof HostsRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/api/spec': typeof ApiSpecRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/hosts': typeof HostsRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/api/spec': typeof ApiSpecRoute
@@ -83,14 +92,24 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
+  fullPaths: '/' | '/hosts' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
-  id: '__root__' | '/' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
+  to: '/' | '/hosts' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/hosts'
+    | '/login'
+    | '/mcp'
+    | '/api/spec'
+    | '/sources/$slug'
+    | '/api/auth/$'
+    | '/api/proxy/$slug/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HostsRoute: typeof HostsRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   ApiSpecRoute: typeof ApiSpecRoute
@@ -101,11 +120,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hosts': {
+      id: '/hosts'
+      path: '/hosts'
+      fullPath: '/hosts'
+      preLoaderRoute: typeof HostsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -115,18 +141,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sources/$slug': {
-      id: '/sources/$slug'
-      path: '/sources/$slug'
-      fullPath: '/sources/$slug'
-      preLoaderRoute: typeof SourcesSlugRouteImport
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/spec': {
@@ -134,6 +153,13 @@ declare module '@tanstack/react-router' {
       path: '/api/spec'
       fullPath: '/api/spec'
       preLoaderRoute: typeof ApiSpecRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sources/$slug': {
+      id: '/sources/$slug'
+      path: '/sources/$slug'
+      fullPath: '/sources/$slug'
+      preLoaderRoute: typeof SourcesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -155,6 +181,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HostsRoute: HostsRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   ApiSpecRoute: ApiSpecRoute,
