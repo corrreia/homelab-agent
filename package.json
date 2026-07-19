@@ -1,6 +1,6 @@
 {
   "name": "homelab-agent",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "One authenticated MCP endpoint fronting every service in your homelab — built on Cloudflare Code Mode.",
   "homepage": "https://github.com/corrreia/homelab-agent",
   "bugs": "https://github.com/corrreia/homelab-agent/issues",
