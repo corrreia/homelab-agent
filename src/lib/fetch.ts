@@ -2,6 +2,10 @@ import http from 'node:http'
 import https from 'node:https'
 import { Readable } from 'node:stream'
 
+// A dead/slow upstream must not hang a whole `execute` run (or the proxy) — fail fast.
+// Callers can override by passing their own `signal`.
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000
+
 function toNodeHeaders(headers: Headers): Record<string, string | string[]> {
   const result: Record<string, string | string[]> = {}
   for (const [name, value] of headers.entries()) {
@@ -121,8 +125,12 @@ export async function loggedFetch(
   options?: { allowInvalidTls?: boolean },
 ): Promise<Response> {
   const safeUrl = redactedUrl(url)
+  const initWithTimeout: RequestInit = {
+    ...init,
+    signal: init.signal ?? AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS),
+  }
   try {
-    const res = await fetchWithOptionalInvalidTls(url, init, options?.allowInvalidTls ?? false)
+    const res = await fetchWithOptionalInvalidTls(url, initWithTimeout, options?.allowInvalidTls ?? false)
     if (!res.ok) {
       console.warn(`[fetch] ${context} ${init.method ?? 'GET'} ${safeUrl} → ${res.status} ${res.statusText}`)
     } else {
