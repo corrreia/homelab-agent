@@ -10,6 +10,7 @@ import { getSource, getSources } from './sources-repo'
 import { loggedFetch } from './fetch'
 import { confirmWrite, emitProgress, isMutatingMethod, type McpRequestContext } from './mcp-elicitation'
 import { registerRemoteTools } from './mcp-remote-tools'
+import { registerHostTools } from './mcp-host-tools'
 
 function getAuthHeaders(source: Source): Record<string, string> {
   switch (source.auth.type) {
@@ -137,6 +138,8 @@ export async function buildMcpServer(): Promise<McpServer> {
 
   // Remote SSH toolkit (remote-bash/read/write/edit/glob/grep) alongside search/execute.
   registerRemoteTools(server, supportsElicitation)
+  // Host management (host-list/add/remove) so the model can maintain its own host list.
+  registerHostTools(server)
 
   return server
 }

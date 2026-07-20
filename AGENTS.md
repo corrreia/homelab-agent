@@ -82,7 +82,7 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 - **Storage:** Drizzle + `better-sqlite3` at `data/app.db`. Schema in `src/db/schema.ts`, migrations in `migrations/` (generate with `pnpm db:generate`, apply with `pnpm db:migrate`). Migrations live outside `data/` so that mounting `./data` as a Docker volume doesn't clobber them.
 - **MCP:** `@cloudflare/codemode` exposes two tools (`search`/`execute`) over a merged OpenAPI spec. Entry point: `src/lib/mcp-server.ts`. Executor is `src/lib/quickjs-executor.ts`. Mutating calls (POST/PUT/PATCH/DELETE) from sandbox code are gated behind MCP elicitation (`src/lib/mcp-elicitation.ts`): approval is asked once per run per source; clients without elicitation support fail open with a warning.
 - **Proxy:** `src/lib/proxy.ts` forwards `/api/proxy/:slug/*` to the upstream, injecting creds from the DB. Request headers are allow-listed; response headers are allow-listed too.
-- **SSH host tools:** the agent owns an ed25519 keypair (`agent_identity` singleton, private key encrypted). Hosts are registered in the `/hosts` UI. Six MCP tools (`remote-bash/read/write/edit/glob/grep`, `src/lib/mcp-remote-tools.ts`) run over SSH (`src/lib/ssh.ts`, `ssh2`) with trust-on-first-use host-key pinning. Mutating tools confirm via elicitation and **fail closed** when the client can't elicit. `src/lib/hosts-repo.ts` is the encryption boundary for the private key (mirror of `sources-repo.ts`). A source may link to the host it runs on via `sources.hostSlug` (relational FK).
+- **SSH host tools:** the agent owns an ed25519 keypair (`agent_identity` singleton, private key encrypted). Hosts are registered in the `/hosts` UI. Six MCP tools (`remote-bash/read/write/edit/glob/grep`, `src/lib/mcp-remote-tools.ts`) run over SSH (`src/lib/ssh.ts`, `ssh2`) with trust-on-first-use host-key pinning. Mutating tools confirm via elicitation and **fail closed** when the client can't elicit. Host management (`host-list/add/remove`, `src/lib/mcp-host-tools.ts`) lets the model maintain its own host list. `src/lib/hosts-repo.ts` is the encryption boundary for the private key (mirror of `sources-repo.ts`). A source may link to the host it runs on via `sources.hostSlug` (relational FK).
 - **Sources:** User-added upstream services. Bundled OpenAPI templates live in `specs/`, wired via `src/lib/templates.ts` + `src/lib/bundled-specs.ts`. Custom sources fetch their spec at runtime (`src/lib/source-spec.ts`).
 
 ## Conventions and invariants
@@ -127,6 +127,7 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `src/lib/mcp-server.ts` | Code Mode MCP server wiring |
 | `src/lib/mcp-elicitation.ts` | MCP write-confirmation + progress helpers (`confirmAction`) |
 | `src/lib/mcp-remote-tools.ts` | SSH tools: remote-bash/read/write/edit/glob/grep |
+| `src/lib/mcp-host-tools.ts` | Host-management tools: host-list/add/remove |
 | `src/lib/ssh.ts` | SSH connect (host-key TOFU), exec, SFTP, tool primitives |
 | `src/lib/ssh-helpers.ts` | Pure SSH helpers (line format, edit, find/grep, TOFU verdict) |
 | `src/lib/ssh-keys.ts` | ed25519 agent keypair generation |
