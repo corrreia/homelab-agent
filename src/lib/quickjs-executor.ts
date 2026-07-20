@@ -34,6 +34,9 @@ export class QuickJsExecutor implements Executor {
 
     const vm = runtime.newContext()
     const deferreds: QuickJSDeferredPromise[] = []
+    // Once the run ends (incl. timeout), a still-pending host call must NOT touch the
+    // disposed vm/runtime when it finally settles — that is a use-after-free crash.
+    const state = { disposed: false }
 
     try {
       this.installConsole(vm, logs)
@@ -41,7 +44,7 @@ export class QuickJsExecutor implements Executor {
         ? providersOrFns
         : [{ name: 'codemode', fns: providersOrFns, positionalArgs: false }]
       for (const provider of providers) {
-        this.installProvider(vm, provider.name, provider.fns, provider.positionalArgs ?? false, deferreds)
+        this.installProvider(vm, provider.name, provider.fns, provider.positionalArgs ?? false, deferreds, state)
       }
 
       const result = vm.evalCode(`Promise.resolve((${code})())`)
@@ -81,6 +84,7 @@ export class QuickJsExecutor implements Executor {
         logs,
       }
     } finally {
+      state.disposed = true // late-settling host calls now become no-ops instead of crashing
       for (const deferred of deferreds) {
         if (deferred.alive) deferred.dispose()
       }
@@ -109,6 +113,7 @@ export class QuickJsExecutor implements Executor {
     fns: FnMap,
     positionalArgs: boolean,
     deferreds: QuickJSDeferredPromise[],
+    state: { disposed: boolean },
   ): void {
     const providerHandle = vm.newObject()
     for (const [fnName, fn] of Object.entries(fns)) {
@@ -118,18 +123,25 @@ export class QuickJsExecutor implements Executor {
         deferreds.push(deferred)
         Promise.resolve(fn(...nativeArgs))
           .then((result) => {
+            if (state.disposed || !deferred.alive) return // run ended before this settled
             const handle = this.toHandle(vm, result)
             deferred.resolve(handle)
             handle.dispose()
           })
           .catch((err: unknown) => {
+            if (state.disposed || !deferred.alive) return
             const message = err instanceof Error ? err.message : String(err)
             const handle = vm.newString(message)
             deferred.reject(handle)
             handle.dispose()
           })
           .finally(() => {
-            vm.runtime.executePendingJobs()
+            if (state.disposed) return
+            try {
+              vm.runtime.executePendingJobs()
+            } catch {
+              // runtime torn down between the guard check and here — nothing to pump
+            }
           })
         return deferred.handle
       })
