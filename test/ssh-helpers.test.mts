@@ -5,7 +5,9 @@ import {
   buildFindCommand,
   buildGrepCommand,
   classifyHostKey,
+  classifySearchExit,
   formatNumberedLines,
+  safePath,
   shellQuote,
 } from '../src/lib/ssh-helpers.ts'
 
@@ -42,16 +44,34 @@ test('shellQuote escapes embedded single quotes', () => {
   assert.equal(shellQuote("it's"), `'it'\\''s'`)
 })
 
-test('buildFindCommand: uses -name of the last glob segment, quoted', () => {
-  assert.equal(buildFindCommand('*.conf', '/etc'), `find '/etc' -type f -name '*.conf' 2>/dev/null`)
-  assert.match(buildFindCommand('**/*.log', '/var'), /-name '\*\.log'/)
+test('buildFindCommand: bare pattern matches by -name, quoted', () => {
+  assert.equal(buildFindCommand('*.conf', '/etc'), `find '/etc' -type f -name '*.conf'`)
 })
 
-test('buildGrepCommand: prefers rg, falls back to grep, quotes pattern/path', () => {
+test('buildFindCommand: pattern with a directory part is anchored under the root via -path', () => {
+  assert.equal(buildFindCommand('a/*.txt', '/g'), `find '/g' -type f -path '/g/a/*.txt'`)
+  assert.equal(buildFindCommand('**/*.log', '/var/'), `find '/var/' -type f -path '/var/*.log'`)
+  assert.equal(buildFindCommand('src/**/x.ts', '.'), `find '.' -type f -path './src/*x.ts'`)
+})
+
+test('safePath: a leading dash can never become a find action or grep option', () => {
+  assert.equal(safePath('-delete'), './-delete')
+  assert.equal(safePath('/etc'), '/etc')
+  assert.equal(buildFindCommand('*.log', '-delete'), `find './-delete' -type f -name '*.log'`)
+  assert.match(buildGrepCommand('x', { path: '--version' }), /-- '\.\/--version'/)
+})
+
+test('buildGrepCommand: prefers rg, falls back to grep -E, path after --', () => {
   const cmd = buildGrepCommand('TODO', { path: '/srv', ignoreCase: true, glob: '*.ts' })
   assert.match(cmd, /command -v rg/)
-  assert.match(cmd, /rg --line-number --no-heading -i -g '\*\.ts' -e 'TODO' '\/srv'/)
-  assert.match(cmd, /grep -rn -i --include='\*\.ts' -e 'TODO' '\/srv'/)
+  assert.match(cmd, /rg --line-number --no-heading -i -g '\*\.ts' -e 'TODO' -- '\/srv'/)
+  assert.match(cmd, /grep -rnE -i --include='\*\.ts' -e 'TODO' -- '\/srv'/)
+})
+
+test('classifySearchExit: rg/grep exit-code contract', () => {
+  assert.equal(classifySearchExit(0), 'matches')
+  assert.equal(classifySearchExit(1), 'none')
+  assert.equal(classifySearchExit(2), 'error')
 })
 
 test('classifyHostKey: TOFU verdicts', () => {

@@ -82,7 +82,7 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 - **Storage:** Drizzle + `better-sqlite3` at `data/app.db`. Schema in `src/db/schema.ts`, migrations in `migrations/` (generate with `pnpm db:generate`, apply with `pnpm db:migrate`). Migrations live outside `data/` so that mounting `./data` as a Docker volume doesn't clobber them.
 - **MCP:** `@cloudflare/codemode` exposes two tools (`search`/`execute`) over a merged OpenAPI spec. Entry point: `src/lib/mcp-server.ts`. Executor is `src/lib/quickjs-executor.ts`. Mutating calls (POST/PUT/PATCH/DELETE) from sandbox code are gated behind MCP elicitation (`src/lib/mcp-elicitation.ts`): approval is asked once per run per source; clients without elicitation support fail open with a warning.
 - **Proxy:** `src/lib/proxy.ts` forwards `/api/proxy/:slug/*` to the upstream, injecting creds from the DB. Request headers are allow-listed; response headers are allow-listed too.
-- **SSH host tools:** the agent owns an ed25519 keypair (`agent_identity` singleton, private key encrypted). Hosts are registered in the `/hosts` UI. Six MCP tools (`remote-bash/read/write/edit/glob/grep`, `src/lib/mcp-remote-tools.ts`) run over SSH (`src/lib/ssh.ts`, `ssh2`) with trust-on-first-use host-key pinning. Mutating tools confirm via elicitation and **fail closed** when the client can't elicit. Host management (`host-list/add/remove`, `src/lib/mcp-host-tools.ts`) lets the model maintain its own host list. `src/lib/hosts-repo.ts` is the encryption boundary for the private key (mirror of `sources-repo.ts`). A source may link to the host it runs on via `sources.hostSlug` (relational FK).
+- **SSH host tools:** the agent owns an ed25519 keypair (`agent_identity` singleton, private key encrypted). Hosts are registered in the `/hosts` UI. Six MCP tools (`remote-bash/read/write/edit/glob/grep`, `src/lib/mcp-remote-tools.ts`) run over SSH (`src/lib/ssh.ts`, `ssh2`) with trust-on-first-use host-key pinning. Mutating tools confirm via elicitation and **fail closed** when the client can't elicit. Host management (`host-list/add/remove`, `src/lib/mcp-host-tools.ts`) lets the model maintain its own host list. `src/lib/hosts-repo.ts` is the encryption boundary for the private key (mirror of `sources-repo.ts`). `src/lib/ssh-client.ts` holds the DB-free ssh2 primitives (exec with output cap + kill-on-timeout, atomic SFTP write via `posix-rename@openssh.com`) so they unit-test against an in-process ssh2 server. A source may link to the host it runs on via `sources.hostSlug` (relational FK).
 - **Sources:** User-added upstream services. Bundled OpenAPI templates live in `specs/`, wired via `src/lib/templates.ts` + `src/lib/bundled-specs.ts`. Custom sources fetch their spec at runtime (`src/lib/source-spec.ts`).
 
 ## Conventions and invariants
@@ -93,6 +93,8 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 - **URLs are scheme-restricted** to `http:`/`https:` at source-creation time (see `validateHttpUrl` in `sources-repo.ts`). Don't bypass.
 - **The merged OpenAPI spec is cached** (`src/lib/spec-cache.ts`). Any mutation through `sources-repo` calls `invalidateMergedSpecCache()` — maintain that invariant when adding new write paths.
 - **Dev vs prod bootstrap differ.** In prod, `server.entry.js` runs drizzle migrations before loading the built server. In dev, migrations are manual (`pnpm db:migrate`). Don't put migration-dependent side effects at module-load time in `src/db/index.ts`.
+- **Host-key pins live in `known_hosts` keyed by `hostname:port`, not on the host row.** `host-remove` + `host-add` (both unconfirmed MCP tools) must never be able to forget a pin; only a human clears one, via "Forget key" on `/hosts`.
+- **Paths handed to remote `find`/`grep` go through `safePath`/`--`** (`src/lib/ssh-helpers.ts`) — a leading `-` would otherwise become a `find` action such as `-delete`, on an unconfirmed tool.
 - **No RBAC by design.** Any authenticated user is effectively admin. Don't add role checks unless the product changes.
 - **Styling:** design tokens live in `src/styles.ts`. No CSS-in-JS library; inline `style={{...}}` is the project's pattern. Match it.
 
@@ -128,7 +130,8 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `src/lib/mcp-elicitation.ts` | MCP write-confirmation + progress helpers (`confirmAction`) |
 | `src/lib/mcp-remote-tools.ts` | SSH tools: remote-bash/read/write/edit/glob/grep |
 | `src/lib/mcp-host-tools.ts` | Host-management tools: host-list/add/remove |
-| `src/lib/ssh.ts` | SSH connect (host-key TOFU), exec, SFTP, tool primitives |
+| `src/lib/ssh.ts` | SSH connect (host-key TOFU), tool primitives over hosts |
+| `src/lib/ssh-client.ts` | DB-free ssh2 primitives: capped exec, kill-on-timeout, atomic SFTP write |
 | `src/lib/ssh-helpers.ts` | Pure SSH helpers (line format, edit, find/grep, TOFU verdict) |
 | `src/lib/ssh-keys.ts` | ed25519 agent keypair generation |
 | `src/lib/hosts-repo.ts` | Host CRUD + agent-key encryption boundary |
