@@ -4,6 +4,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { createHost, deleteHost, ensureAgentIdentity, listHosts } from './hosts-repo'
 
 const ok = (text: string): CallToolResult => ({ content: [{ type: 'text', text }] })
+
 const fail = (text: string): CallToolResult => ({ content: [{ type: 'text', text }], isError: true })
 
 /**
@@ -32,6 +33,7 @@ export function registerHostTools(server: McpServer): void {
       guard(async () => {
         const hosts = await listHosts()
         const { publicKey } = await ensureAgentIdentity()
+
         return ok(
           JSON.stringify(
             {
@@ -41,7 +43,7 @@ export function registerHostTools(server: McpServer): void {
                 hostname: h.hostname,
                 port: h.port,
                 username: h.username,
-                pinned: Boolean(h.hostKey),
+                pinned: h.pinned,
               })),
               agentPublicKey: publicKey,
             },
@@ -74,7 +76,9 @@ export function registerHostTools(server: McpServer): void {
           port: args.port,
           label: args.label,
         })
+
         const { publicKey } = await ensureAgentIdentity()
+
         return ok(
           `Registered host "${host.slug}" (${host.username}@${host.hostname}:${host.port}). ` +
             `If not already done, add the agent public key to its ~/.ssh/authorized_keys:\n${publicKey}`,
@@ -85,12 +89,14 @@ export function registerHostTools(server: McpServer): void {
   server.registerTool(
     'host-remove',
     {
-      description: 'Unregister an SSH host (removes it from the list and unlinks any sources that ran on it).',
+      description:
+        'Unregister an SSH host (removes it from the list and unlinks any sources that ran on it). Its pinned server key is kept.',
       inputSchema: { slug: z.string() },
     },
     (args) =>
       guard(async () => {
         await deleteHost(args.slug)
+
         return ok(`Removed host "${args.slug}".`)
       }),
   )

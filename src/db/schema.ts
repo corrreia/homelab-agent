@@ -223,22 +223,30 @@ export const sources = sqliteTable('sources', {
     .$defaultFn(() => new Date()),
 })
 
-/**
- * SSH hosts the agent can reach. They all authenticate with the shared agent identity key.
- * `hostKey` is the server's public host key, pinned trust-on-first-use for MITM protection —
- * it belongs to the host it identifies, not to a global blob.
- */
+/** SSH hosts the agent can reach. They all authenticate with the shared agent identity key. */
 export const hosts = sqliteTable('hosts', {
   slug: text('slug').primaryKey(),
   label: text('label').notNull(),
   hostname: text('hostname').notNull(),
   port: integer('port').notNull().default(22),
   username: text('username').notNull(),
-  hostKey: text('host_key'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})
+
+/**
+ * Server host keys pinned trust-on-first-use, keyed by `hostname:port` rather than by host row
+ * so that removing and re-adding a host (which the model can do unattended) cannot silently
+ * accept a new key. Only a human clears a pin, from the /hosts UI.
+ */
+export const knownHosts = sqliteTable('known_hosts', {
+  endpoint: text('endpoint').primaryKey(),
+  hostKey: text('host_key').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
 })

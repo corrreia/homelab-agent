@@ -5,7 +5,10 @@ import { requireCurrentSession } from '../lib/require-auth'
 import {
   createHost as repoCreateHost,
   deleteHost as repoDeleteHost,
+  endpointOf,
   ensureAgentIdentity,
+  forgetHostKey as repoForgetHostKey,
+  getHost,
   listHosts,
   regenerateAgentIdentity,
   type Host,
@@ -17,28 +20,44 @@ import { colors, fonts } from '../styles'
 const getHostsData = createServerFn({ method: 'GET' }).handler(async () => {
   await requireCurrentSession()
   const { publicKey } = await ensureAgentIdentity() // generate on first visit
+
   return { hosts: await listHosts(), publicKey }
 })
 
 const addHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: HostInput }) => {
   await requireCurrentSession()
   await repoCreateHost(data)
+
   return listHosts()
 })
 
 const removeHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
   await requireCurrentSession()
   await repoDeleteHost(data.slug)
+
   return listHosts()
 })
 
+const forgetKey = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
+  await requireCurrentSession()
+  const host = await getHost(data.slug)
+
+  if (host) await repoForgetHostKey(endpointOf(host))
+
+  return listHosts()
+})
+
+// Also returns the host list: a successful first test pins the server key.
 const testHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
   await requireCurrentSession()
-  return testHostConnection(data.slug)
+  const result = await testHostConnection(data.slug)
+
+  return { result, hosts: await listHosts() }
 })
 
 const rotateIdentity = createServerFn({ method: 'POST' }).handler(async () => {
   await requireCurrentSession()
+
   return regenerateAgentIdentity()
 })
 
@@ -88,6 +107,7 @@ function HostsPage() {
   async function onAdd(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
     try {
       const next = await addHost({
         data: {
@@ -98,6 +118,7 @@ function HostsPage() {
           username: form.username.trim(),
         },
       })
+
       setHosts(next)
       setForm({ slug: '', label: '', hostname: '', port: '22', username: 'root' })
     } catch (err) {
@@ -112,8 +133,19 @@ function HostsPage() {
 
   async function onTest(slug: string) {
     setTests((t) => ({ ...t, [slug]: 'pending' }))
-    const result = await testHost({ data: { slug } })
+    const { result, hosts: next } = await testHost({ data: { slug } })
     setTests((t) => ({ ...t, [slug]: result }))
+    setHosts(next)
+  }
+
+  async function onForgetKey(slug: string) {
+    if (
+      !window.confirm(
+        `Forget the pinned server key for "${slug}"? Only do this if you rebuilt the host yourself — the next connection will trust whatever key it presents.`,
+      )
+    )
+      return
+    setHosts(await forgetKey({ data: { slug } }))
   }
 
   async function onRegenerate() {
@@ -189,6 +221,7 @@ function HostsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {hosts.map((h) => {
             const t = tests[h.slug]
+
             return (
               <div
                 key={h.slug}
@@ -211,9 +244,24 @@ function HostsPage() {
                   </div>
                   <div style={{ fontSize: '0.8rem', color: colors.textDim, fontFamily: fonts.mono }}>
                     {h.username}@{h.hostname}:{h.port}
-                    {h.hostKey ? '  · pinned' : '  · unverified'}
+                    {h.pinned ? '  · key pinned' : '  · key not yet pinned'}
                   </div>
                 </div>
+                {h.pinned && (
+                  <button
+                    type="button"
+                    onClick={() => onForgetKey(h.slug)}
+                    title="Clear the pinned server key (only after you rebuilt the host)"
+                    style={{
+                      ...buttonStyle,
+                      background: 'transparent',
+                      color: colors.textMuted,
+                      border: `1px solid ${colors.border}`,
+                    }}
+                  >
+                    Forget key
+                  </button>
+                )}
                 {t && t !== 'pending' && (
                   <span
                     style={{ fontSize: '0.78rem', color: t.ok ? colors.success : colors.error, fontFamily: fonts.mono }}
