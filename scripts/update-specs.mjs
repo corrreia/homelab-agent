@@ -3,67 +3,52 @@
 //
 //   node scripts/update-specs.mjs        # or: pnpm run update-specs
 //
-// Each source is fetched, parsed (JSON or YAML), sanity-checked for an OpenAPI/Swagger
-// document with paths, and written back pretty-printed. A source that fails to fetch or
-// validate is reported and skipped — the existing spec is left untouched, never clobbered
-// with a partial download.
+// Each source is pinned to its repo's latest stable GitHub release — not a dev branch, which
+// carries unreleased (or RC) endpoints users' servers don't have yet — then fetched, parsed
+// (JSON or YAML), sanity-checked for an OpenAPI/Swagger document with paths, and written back
+// pretty-printed. A source that fails to fetch or validate is reported and skipped — the
+// existing spec is left untouched, never clobbered with a partial download.
 //
 // Not auto-refreshable (kept manual, see README):
 //   - bazarr: its spec is generated at runtime by flask-restx — there is no static file in the repo.
 //   - unifi-network / unifi-protect: Ubiquiti publishes these behind their portal, not a stable public URL.
-//   - jellyfin: upstream's jellyfin-openapi-stable.json currently tracks the 12.0 release candidate
-//     (x-jellyfin-version 12.0.0) while the shipping stable server is 10.11.x. Bundling the RC would
-//     hand 10.11 users endpoints their server lacks, so jellyfin stays pinned to its 10.11 spec until
-//     12.0 reaches GA. Revisit then.
+//     Versioned files are mirrored from github.com/beezly/unifi-apis; only add versions that are on
+//     Ubiquiti's release channel (fw-update.ui.com).
+//   - jellyfin: versioned like UniFi (specs/jellyfin/<version>.json, picked per source) because 12.0
+//     dropped endpoints that 10.11 servers still serve. Stable specs live at
+//     https://repo.jellyfin.org/files/openapi/stable/jellyfin-openapi-<version>.json.
 
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import yaml from 'js-yaml'
 
-/** @type {Array<{ slug: string, out: string, url: string, format: 'json' | 'yaml' }>} */
+/** @type {Array<{ slug: string, out: string, repo: string, path: string, format: 'json' | 'yaml' }>} */
 const SOURCES = [
   {
     slug: 'immich',
     out: 'immich.json',
     format: 'json',
-    url: 'https://raw.githubusercontent.com/immich-app/immich/main/open-api/immich-openapi-specs.json',
+    repo: 'immich-app/immich',
+    path: 'open-api/immich-openapi-specs.json',
   },
-  {
-    slug: 'sonarr',
-    out: 'sonarr.json',
-    format: 'json',
-    url: 'https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/Sonarr.Api.V3/openapi.json',
-  },
-  {
-    slug: 'radarr',
-    out: 'radarr.json',
-    format: 'json',
-    url: 'https://raw.githubusercontent.com/Radarr/Radarr/develop/src/Radarr.Api.V3/openapi.json',
-  },
+  { slug: 'sonarr', out: 'sonarr.json', format: 'json', repo: 'Sonarr/Sonarr', path: 'src/Sonarr.Api.V3/openapi.json' },
+  { slug: 'radarr', out: 'radarr.json', format: 'json', repo: 'Radarr/Radarr', path: 'src/Radarr.Api.V3/openapi.json' },
   {
     slug: 'prowlarr',
     out: 'prowlarr.json',
     format: 'json',
-    url: 'https://raw.githubusercontent.com/Prowlarr/Prowlarr/develop/src/Prowlarr.Api.V1/openapi.json',
+    repo: 'Prowlarr/Prowlarr',
+    path: 'src/Prowlarr.Api.V1/openapi.json',
   },
-  {
-    slug: 'lidarr',
-    out: 'lidarr.json',
-    format: 'json',
-    url: 'https://raw.githubusercontent.com/Lidarr/Lidarr/develop/src/Lidarr.Api.V1/openapi.json',
-  },
-  {
-    slug: 'seerr',
-    out: 'seerr.json',
-    format: 'yaml',
-    url: 'https://raw.githubusercontent.com/fallenbagel/jellyseerr/develop/seerr-api.yml',
-  },
+  { slug: 'lidarr', out: 'lidarr.json', format: 'json', repo: 'Lidarr/Lidarr', path: 'src/Lidarr.Api.V1/openapi.json' },
+  { slug: 'seerr', out: 'seerr.json', format: 'yaml', repo: 'seerr-team/seerr', path: 'seerr-api.yml' },
   // Portainer's Swagger 2.0 doc (matches the currently-bundled format; openapi.yaml is 3.0 but changes path/schema semantics).
   {
     slug: 'portainer',
     out: 'portainer.json',
     format: 'yaml',
-    url: 'https://raw.githubusercontent.com/portainer/portainer/develop/api/docs/swagger.yaml',
+    repo: 'portainer/portainer',
+    path: 'api/docs/swagger.yaml',
   },
 ]
 
@@ -71,9 +56,18 @@ const SPECS_DIR = join(process.cwd(), 'specs')
 
 const versionOf = (spec) => spec?.info?.version ?? '?'
 
+// GitHub's /releases/latest skips prereleases and redirects to the tag — no API token or rate limit.
+async function latestReleaseTag(repo) {
+  const res = await fetch(`https://github.com/${repo}/releases/latest`, { redirect: 'manual' })
+  const tag = res.headers.get('location')?.match(/\/releases\/tag\/([^/?#]+)$/)?.[1]
+  if (!tag) throw new Error(`could not resolve latest release (HTTP ${res.status})`)
+  return decodeURIComponent(tag)
+}
+
 async function refresh(source) {
-  const res = await fetch(source.url)
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const tag = await latestReleaseTag(source.repo)
+  const res = await fetch(`https://raw.githubusercontent.com/${source.repo}/${tag}/${source.path}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${source.path} at ${tag}`)
   const text = await res.text()
   const spec = source.format === 'yaml' ? yaml.load(text) : JSON.parse(text)
 
@@ -90,16 +84,16 @@ async function refresh(source) {
   }
 
   writeFileSync(outPath, JSON.stringify(spec, null, 2) + '\n')
-  return { oldVersion, newVersion: versionOf(spec), paths: Object.keys(spec.paths).length }
+  return { tag, oldVersion, newVersion: versionOf(spec), paths: Object.keys(spec.paths).length }
 }
 
 let updated = 0
 let failed = 0
 for (const source of SOURCES) {
   try {
-    const { oldVersion, newVersion, paths } = await refresh(source)
+    const { tag, oldVersion, newVersion, paths } = await refresh(source)
     console.log(
-      `✓ ${source.slug.padEnd(10)} ${String(oldVersion).padEnd(10)} → ${String(newVersion).padEnd(10)} (${paths} paths)`,
+      `✓ ${source.slug.padEnd(10)} ${String(oldVersion).padEnd(10)} → ${String(newVersion).padEnd(10)} (release ${tag}, ${paths} paths)`,
     )
     updated++
   } catch (err) {
@@ -109,5 +103,5 @@ for (const source of SOURCES) {
 }
 
 console.log(`\n${updated} updated, ${failed} failed.`)
-console.log('Manual (not fetched): bazarr, jellyfin (pinned to 10.11 until 12.0 GA), unifi-network/*, unifi-protect/*.')
+console.log('Manual (not fetched): bazarr, jellyfin/*, unifi-network/*, unifi-protect/*.')
 if (failed > 0) process.exitCode = 1
