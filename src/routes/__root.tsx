@@ -3,12 +3,15 @@ import { Outlet, createRootRoute, HeadContent, Scripts, Link, redirect } from '@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { Logo } from '../components/Logo'
-import { auth } from '../lib/auth'
+import { auth, authDisabled } from '../lib/auth'
 import { colors, fonts } from '../styles'
 
 const getSession = createServerFn({ method: 'GET' }).handler(async () => {
+  // Stand-in session so the gate below lets every request through.
+  if (authDisabled) return { authDisabled: true as const }
   const headers = new Headers(getRequestHeaders())
   const session = await auth.api.getSession({ headers })
+
   return session
 })
 
@@ -22,10 +25,13 @@ export const Route = createRootRoute({
     ) {
       return { session: null }
     }
+
     const session = await getSession()
+
     if (!session) {
       throw redirect({ to: '/login' })
     }
+
     return { session }
   },
   head: () => ({
@@ -55,6 +61,8 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  const { session } = Route.useRouteContext()
+
   return (
     <html lang="en">
       <head>
@@ -70,6 +78,22 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           minHeight: '100vh',
         }}
       >
+        {session && 'authDisabled' in session && (
+          <div
+            role="alert"
+            style={{
+              background: colors.error,
+              color: '#fff',
+              padding: '0.5rem 2rem',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              textAlign: 'center',
+            }}
+          >
+            Authentication is disabled (DANGEROUSLY_DISABLE_AUTH=true). Anyone who can reach this server has full
+            access. Never expose it.
+          </div>
+        )}
         <header
           style={{
             borderBottom: `1px solid ${colors.border}`,

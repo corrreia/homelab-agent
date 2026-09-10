@@ -87,7 +87,7 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 
 ## Conventions and invariants
 
-- **Every route under `src/routes/api/*` calls `requireApiSession(request)` before doing anything.** If you add a new API route, do the same. `/mcp` uses `withMcpAuth` instead.
+- **Every route under `src/routes/api/*` calls `requireApiSession(request)` before doing anything.** If you add a new API route, do the same. `/mcp` uses `withMcpAuth` instead. All gates are bypassed when `authDisabled` (`src/lib/auth.ts`) is set; any new gate must honor it too.
 - **`src/lib/sources-repo.ts` is the only place that reads or writes source rows.** Encryption/decryption of `authToken` and `authHeaderValue` happens there via `src/lib/encryption.ts` — never touch the raw columns.
 - **Credentials are encrypted at rest** with AES‑256‑GCM. The key is HKDF-derived from `ENCRYPTION_KEY`. Never log decrypted values. Never add backwards-compat paths that accept plaintext on read — the DB only ever holds the `v1:` envelope.
 - **URLs are scheme-restricted** to `http:`/`https:` at source-creation time (see `validateHttpUrl` in `sources-repo.ts`). Don't bypass.
@@ -152,3 +152,4 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `OIDC_ISSUER` | OIDC issuer URL (any standards-compliant provider). |
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | OIDC client creds. |
 | `PORT` | Default `3000`. |
+| `DANGEROUSLY_DISABLE_AUTH` | `true` turns off all auth (UI, `/api/*`, `/mcp`) and makes `OIDC_*` optional. Prototyping only. |

@@ -39,6 +39,9 @@ Fill in:
 - `OIDC_ISSUER` — your provider's issuer URL. Better Auth fetches `/.well-known/openid-configuration` from here.
 - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` — register a client in your provider with redirect URI `${AUTH_URL}/api/auth/oauth2/callback/oidc`.
 
+> [!CAUTION]
+> **Prototyping only. Highly not advised.** `DANGEROUSLY_DISABLE_AUTH=true` turns off authentication for the web UI, `/api/*` and `/mcp`, and makes the `OIDC_*` vars optional. Anyone who can reach the server can then use every source's credentials and run commands on every registered SSH host. Only use it on localhost, and never expose such an instance to a network.
+
 ### Dev
 
 ```bash
