@@ -92,7 +92,12 @@ export const templates: ServiceTemplate[] = [
     name: 'Jellyfin',
     description: 'Media server',
     defaultSlug: 'jellyfin',
-    bundledSpec: 'jellyfin.json',
+    bundledSpec: 'jellyfin/12.0.0.json',
+    // 12.0 removed endpoints (HLS, ActiveEncodings, …) that 10.11 servers still serve.
+    specVersions: [
+      { value: '12.0.0', bundledSpec: 'jellyfin/12.0.0.json' },
+      { value: '10.11.11', bundledSpec: 'jellyfin/10.11.11.json' },
+    ],
     authType: 'header',
     authHeaderName: 'X-Emby-Token',
     urlPlaceholder: 'http://jellyfin:8096',
@@ -162,9 +167,11 @@ export const templates: ServiceTemplate[] = [
     name: 'UniFi Network',
     description: 'UniFi network controller',
     defaultSlug: 'unifi-network',
-    bundledSpec: 'unifi-network/10.5.62.json',
+    bundledSpec: 'unifi-network/10.6.101.json',
     publicPathPrefix: '/proxy/network',
     specVersions: [
+      { value: '10.6.101', bundledSpec: 'unifi-network/10.6.101.json' },
+      { value: '10.5.67', bundledSpec: 'unifi-network/10.5.67.json' },
       { value: '10.5.62', bundledSpec: 'unifi-network/10.5.62.json' },
       { value: '10.4.57', bundledSpec: 'unifi-network/10.4.57.json' },
       { value: '10.4.55', bundledSpec: 'unifi-network/10.4.55.json' },
@@ -189,10 +196,14 @@ export const templates: ServiceTemplate[] = [
     name: 'UniFi Protect',
     description: 'UniFi camera and NVR management',
     defaultSlug: 'unifi-protect',
-    bundledSpec: 'unifi-protect/7.1.87.json',
+    bundledSpec: 'unifi-protect/7.2.105.json',
     publicPathPrefix: '/proxy/protect',
     specVersions: [
+      { value: '7.2.105', bundledSpec: 'unifi-protect/7.2.105.json' },
       { value: '7.1.87', bundledSpec: 'unifi-protect/7.1.87.json' },
+      { value: '7.1.83', bundledSpec: 'unifi-protect/7.1.83.json' },
+      { value: '7.1.77', bundledSpec: 'unifi-protect/7.1.77.json' },
+      { value: '7.1.76', bundledSpec: 'unifi-protect/7.1.76.json' },
       { value: '7.1.75', bundledSpec: 'unifi-protect/7.1.75.json' },
       { value: '7.1.60', bundledSpec: 'unifi-protect/7.1.60.json' },
       { value: '7.0.107', bundledSpec: 'unifi-protect/7.0.107.json' },
@@ -219,7 +230,9 @@ export function getTemplate(id: string): ServiceTemplate | undefined {
 export function resolveBundledSpec(template: ServiceTemplate, version?: string): string {
   if (template.specVersions && template.specVersions.length > 0) {
     const match = template.specVersions.find((v) => v.value === version)
+
     return (match ?? template.specVersions[0]).bundledSpec
   }
+
   return template.bundledSpec
 }
