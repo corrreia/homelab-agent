@@ -130,7 +130,9 @@ export async function forgetHostKey(endpoint: string): Promise<void> {
 // ---- Agent SSH identity (encryption boundary) ------------------------------
 // The private key is the crown-jewel secret: only this module decrypts it, and it is never
 // logged or returned to any HTTP/MCP surface. Everything else asks for the public key or a
-// signing handle via ssh.ts.
+// signing handle via ssh.ts. There is deliberately no rotate/replace path: it would break
+// authentication on every host at once, so replacing the identity means deleting the
+// agent_identity row by hand, after which the next visit generates a fresh keypair.
 
 function identityRow() {
   return db.select().from(agentIdentity).where(eq(agentIdentity.id, IDENTITY_ID)).get()
@@ -158,20 +160,4 @@ export async function getAgentPrivateKey(): Promise<string | null> {
   const row = identityRow()
 
   return row ? decrypt(row.privateKey) : null
-}
-
-/** Rotate the identity; caller must re-add the new public key to each host's authorized_keys. */
-export async function regenerateAgentIdentity(): Promise<{ publicKey: string }> {
-  const { privateKey, publicKey } = generateAgentKeyPair()
-  const values = { privateKey: encrypt(privateKey), publicKey, updatedAt: new Date() }
-
-  if (identityRow()) {
-    db.update(agentIdentity).set(values).where(eq(agentIdentity.id, IDENTITY_ID)).run()
-  } else {
-    db.insert(agentIdentity)
-      .values({ id: IDENTITY_ID, ...values })
-      .run()
-  }
-
-  return { publicKey }
 }
