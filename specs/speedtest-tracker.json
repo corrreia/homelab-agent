@@ -1,0 +1,1260 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Speedtest Tracker API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/ookla": {
+      "description": "Endpoints for retrieving Ookla speedtest servers and related resources."
+    },
+    "/api/v1/results": {
+      "description": "Endpoints for retrieving speedtest results.",
+      "get": {
+        "tags": ["Results"],
+        "summary": "List all results",
+        "operationId": "listResults",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptHeader"
+          },
+          {
+            "name": "per.page",
+            "in": "query",
+            "description": "Number of results per page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "maximum": 500,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "filter[ping]",
+            "in": "query",
+            "description": "Filter by ping value (supports operators like >=, <=, etc.)",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "filter[download]",
+            "in": "query",
+            "description": "Filter by download speed (supports operators like >=, <=, etc.)",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "filter[upload]",
+            "in": "query",
+            "description": "Filter by upload speed (supports operators like >=, <=, etc.)",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "filter[healthy]",
+            "in": "query",
+            "description": "Filter by healthy status",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "description": "Filter by status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter[scheduled]",
+            "in": "query",
+            "description": "Filter by scheduled status",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "filter[start_at]",
+            "in": "query",
+            "description": "Filter results created on or after this date (alias for created_at>=)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "filter[end_at]",
+            "in": "query",
+            "description": "Filter results created on or before this date (alias for created_at<=). A date without a time includes the entire day.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort results by field (prefix with - for descending)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ping",
+                "-ping",
+                "download",
+                "-download",
+                "upload",
+                "-upload",
+                "created_at",
+                "-created_at",
+                "updated_at",
+                "-updated_at"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultsCollection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable - Missing or invalid Accept header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAcceptableError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stats": {
+      "description": "Endpoints for viewing performance statistics.",
+      "get": {
+        "tags": ["Stats"],
+        "summary": "Fetch aggregated Speedtest statistics",
+        "operationId": "getStats",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptHeader"
+          },
+          {
+            "name": "filter[start_at]",
+            "in": "query",
+            "description": "Filter stats created on or after this date/time (alias for created_at>=)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "filter[end_at]",
+            "in": "query",
+            "description": "Filter stats created on or before this date/time (alias for created_at<=). A date without a time includes the entire day.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistics fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stats"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable - Missing or invalid Accept header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAcceptableError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ookla/list-servers": {
+      "get": {
+        "tags": ["Servers"],
+        "summary": "List available Ookla speedtest servers",
+        "description": "Returns an array of available Ookla speedtest servers. Requires an API token with `ookla:list-servers` scope.",
+        "operationId": "listOoklaServers",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Servers retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServersCollection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable - Missing or invalid Accept header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAcceptableError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{id}": {
+      "get": {
+        "tags": ["Results"],
+        "summary": "Get a single result",
+        "operationId": "getResult",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptHeader"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the result",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Result not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable - Missing or invalid Accept header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAcceptableError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/latest": {
+      "get": {
+        "tags": ["Results"],
+        "summary": "Get the most recent result",
+        "description": "Returns the single most recent result. Combine with filters (e.g. filter[status]=completed) to get the last known good result instead of the literal latest, which may have failed.",
+        "operationId": "getLatestResult",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptHeader"
+          },
+          {
+            "name": "filter[ping]",
+            "in": "query",
+            "description": "Filter by ping value (supports operators like >=, <=, etc.)",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "filter[download]",
+            "in": "query",
+            "description": "Filter by download speed (supports operators like >=, <=, etc.)",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "filter[upload]",
+            "in": "query",
+            "description": "Filter by upload speed (supports operators like >=, <=, etc.)",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "filter[healthy]",
+            "in": "query",
+            "description": "Filter by healthy status",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "description": "Filter by status. Use \"completed\" to fetch the last known good result.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter[scheduled]",
+            "in": "query",
+            "description": "Filter by scheduled status",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "filter[start_at]",
+            "in": "query",
+            "description": "Filter results created on or after this date (alias for created_at>=)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "filter[end_at]",
+            "in": "query",
+            "description": "Filter results created on or before this date (alias for created_at<=). A date without a time includes the entire day.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No result found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable - Missing or invalid Accept header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAcceptableError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/speedtests/run": {
+      "post": {
+        "tags": ["Speedtests"],
+        "summary": "Run a new Ookla speedtest",
+        "operationId": "runSpeedtest",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptHeader"
+          },
+          {
+            "name": "server_id",
+            "in": "query",
+            "description": "Optional Ookla speedtest server ID",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeedtestRun"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable - Missing or invalid Accept header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAcceptableError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/speedtests/list-servers": {
+      "get": {
+        "tags": ["Speedtests"],
+        "summary": "List available Ookla speedtest servers",
+        "operationId": "listSpeedtestServers",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServersCollection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                },
+                "example": {
+                  "message": "You do not have permission to view speedtest servers."
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not Acceptable - Missing or invalid Accept header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAcceptableError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ForbiddenError": {
+        "description": "Forbidden error response when user lacks permission",
+        "properties": {
+          "message": {
+            "description": "Error message indicating lack of permission",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "NotAcceptableError": {
+        "description": "Error response when the Accept header is missing or invalid",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "This endpoint only accepts JSON. Please include \"Accept: application/json\" in your request headers."
+          },
+          "error": {
+            "type": "string",
+            "example": "Unsupported Media Type"
+          }
+        },
+        "type": "object"
+      },
+      "NotFoundError": {
+        "description": "Error when a requested result is not found",
+        "properties": {
+          "message": {
+            "description": "Result not found error message",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ResultResponse": {
+        "description": "Response for an Single Speedtest result entry",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Result"
+          },
+          "message": {
+            "description": "Response status message",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Result": {
+        "description": "Speedtest result entry",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "service": {
+            "type": "string"
+          },
+          "ping": {
+            "type": "number"
+          },
+          "download": {
+            "type": "integer"
+          },
+          "upload": {
+            "type": "integer"
+          },
+          "download_bits": {
+            "type": "integer"
+          },
+          "upload_bits": {
+            "type": "integer"
+          },
+          "download_bits_human": {
+            "type": "string"
+          },
+          "upload_bits_human": {
+            "type": "string"
+          },
+          "benchmarks": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "nullable": true
+          },
+          "healthy": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "scheduled": {
+            "type": "boolean"
+          },
+          "comments": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "description": "Nested speedtest data payload",
+            "properties": {
+              "isp": {
+                "type": "string"
+              },
+              "ping": {
+                "properties": {
+                  "low": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "high": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "jitter": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "latency": {
+                    "type": "number",
+                    "format": "float"
+                  }
+                },
+                "type": "object"
+              },
+              "type": {
+                "type": "string"
+              },
+              "result": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "persisted": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "server": {
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "ip": {
+                    "type": "string",
+                    "format": "ipv4"
+                  },
+                  "host": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "port": {
+                    "type": "integer"
+                  },
+                  "country": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "upload": {
+                "properties": {
+                  "bytes": {
+                    "type": "integer"
+                  },
+                  "elapsed": {
+                    "type": "integer"
+                  },
+                  "latency": {
+                    "properties": {
+                      "iqm": {
+                        "type": "number",
+                        "format": "float"
+                      },
+                      "low": {
+                        "type": "number",
+                        "format": "float"
+                      },
+                      "high": {
+                        "type": "number",
+                        "format": "float"
+                      },
+                      "jitter": {
+                        "type": "number",
+                        "format": "float"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "bandwidth": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "download": {
+                "properties": {
+                  "bytes": {
+                    "type": "integer"
+                  },
+                  "elapsed": {
+                    "type": "integer"
+                  },
+                  "latency": {
+                    "properties": {
+                      "iqm": {
+                        "type": "number",
+                        "format": "float"
+                      },
+                      "low": {
+                        "type": "number",
+                        "format": "float"
+                      },
+                      "high": {
+                        "type": "number",
+                        "format": "float"
+                      },
+                      "jitter": {
+                        "type": "number",
+                        "format": "float"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "bandwidth": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "interface": {
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "isVpn": {
+                    "type": "boolean"
+                  },
+                  "macAddr": {
+                    "type": "string",
+                    "pattern": "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
+                  },
+                  "externalIp": {
+                    "type": "string",
+                    "format": "ipv4"
+                  },
+                  "internalIp": {
+                    "type": "string",
+                    "format": "ipv4"
+                  }
+                },
+                "type": "object"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "packetLoss": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ResultsCollection": {
+        "description": "Paginated list of Speedtest results",
+        "properties": {
+          "data": {
+            "description": "Array of result objects",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            }
+          },
+          "links": {
+            "properties": {
+              "first": {
+                "type": "string"
+              },
+              "last": {
+                "type": "string"
+              },
+              "prev": {
+                "type": "string",
+                "nullable": true
+              },
+              "next": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "type": "object",
+            "additionalProperties": false
+          },
+          "meta": {
+            "properties": {
+              "current_page": {
+                "type": "integer"
+              },
+              "from": {
+                "type": "integer"
+              },
+              "last_page": {
+                "type": "integer"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "active": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "path": {
+                "type": "string"
+              },
+              "per.page": {
+                "type": "integer"
+              },
+              "to": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              }
+            },
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ServersCollection": {
+        "description": "Collection of Ookla speedtest servers",
+        "properties": {
+          "data": {
+            "description": "List of server objects",
+            "type": "array",
+            "items": {
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "host": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "message": {
+            "description": "Response status message",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SpeedtestRun": {
+        "description": "A queued speedtest result",
+        "properties": {
+          "data": {
+            "description": "Queued speedtest result payload",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "service": {
+                "type": "string"
+              },
+              "ping": {
+                "type": "number",
+                "format": "float",
+                "nullable": true
+              },
+              "download": {
+                "type": "integer",
+                "nullable": true
+              },
+              "upload": {
+                "type": "integer",
+                "nullable": true
+              },
+              "benchmarks": {
+                "type": "object",
+                "nullable": true
+              },
+              "healthy": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "status": {
+                "type": "string"
+              },
+              "scheduled": {
+                "type": "boolean"
+              },
+              "comments": {
+                "type": "string",
+                "nullable": true
+              },
+              "data": {
+                "description": "Additional data for queued result",
+                "properties": {
+                  "server": {
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "nullable": true
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "type": "object",
+            "additionalProperties": false
+          },
+          "message": {
+            "description": "Response status message",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Stats": {
+        "description": "Aggregated speedtest statistics",
+        "properties": {
+          "total_results": {
+            "type": "integer"
+          },
+          "avg_ping": {
+            "type": "number",
+            "format": "float"
+          },
+          "avg_download": {
+            "type": "number",
+            "format": "float"
+          },
+          "avg_upload": {
+            "type": "number",
+            "format": "float"
+          },
+          "min_ping": {
+            "type": "number",
+            "format": "float"
+          },
+          "min_download": {
+            "type": "number",
+            "format": "float"
+          },
+          "min_upload": {
+            "type": "number",
+            "format": "float"
+          },
+          "max_ping": {
+            "type": "number",
+            "format": "float"
+          },
+          "max_download": {
+            "type": "number",
+            "format": "float"
+          },
+          "max_upload": {
+            "type": "number",
+            "format": "float"
+          }
+        },
+        "type": "object"
+      },
+      "UnauthenticatedError": {
+        "description": "Error when user is not authenticated",
+        "properties": {
+          "message": {
+            "description": "Unauthenticated error message",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ValidationError": {
+        "description": "Validation failed due to invalid server_id input",
+        "properties": {
+          "message": {
+            "description": "Validation failed due to invalid server_id input",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "parameters": {
+      "AcceptHeader": {
+        "name": "Accept",
+        "in": "header",
+        "description": "Must be \"application/json\" - this API only accepts and returns JSON",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "default": "application/json"
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "bearerFormat": "JWT",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Results",
+      "description": "Endpoints for accessing and filtering speedtest results. Requires API token with `results:read` scope."
+    },
+    {
+      "name": "Speedtests",
+      "description": "Endpoints for running speedtests and listing servers."
+    },
+    {
+      "name": "Stats",
+      "description": "Endpoints for retrieving aggregated statistics and performance metrics. Requires `speedtests:read` token scope."
+    },
+    {
+      "name": "Servers",
+      "description": "Servers"
+    }
+  ]
+}

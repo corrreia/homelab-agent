@@ -1,0 +1,3245 @@
+{
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "schemes": ["http", "https"],
+  "swagger": "2.0",
+  "info": {
+    "description": "This is the documentation of the Gotify REST-API.\n\n# Authentication\nIn Gotify there are two token types:\n__clientToken__: a client is something that receives message and manages stuff like creating new tokens or delete messages. (f.ex this token should be used for an android app)\n__appToken__: an application is something that sends messages (f.ex. this token should be used for a shell script)\n\nThe token can be transmitted in a header named `X-Gotify-Key`, in a query parameter named `token` or\nthrough a header named `Authorization` with the value prefixed with `Bearer` (Ex. `Bearer randomtoken`).\nThere is also the possibility to authenticate through basic auth, this should only be used for creating a clientToken.\n\n\\---\n\nFound a bug or have some questions? [Create an issue on GitHub](https://github.com/gotify/server/issues)",
+    "title": "Gotify REST-API.",
+    "license": {
+      "name": "MIT",
+      "url": "https://github.com/gotify/server/blob/master/LICENSE"
+    },
+    "version": "2.1.0"
+  },
+  "host": "localhost",
+  "paths": {
+    "/application": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["application"],
+        "summary": "Return all applications.",
+        "operationId": "getApps",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Application"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["application"],
+        "summary": "Create an application.",
+        "operationId": "createApp",
+        "parameters": [
+          {
+            "description": "the application to add",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/application/{id}": {
+      "put": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["application"],
+        "summary": "Update an application.",
+        "operationId": "updateApplication",
+        "parameters": [
+          {
+            "description": "the application to update",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationParams"
+            }
+          },
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the application id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["application"],
+        "summary": "Delete an application.",
+        "operationId": "deleteApp",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the application id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/application/{id}/image": {
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["multipart/form-data"],
+        "produces": ["application/json"],
+        "tags": ["application"],
+        "summary": "Upload an image for an application.",
+        "operationId": "uploadAppImage",
+        "parameters": [
+          {
+            "type": "file",
+            "description": "the application image",
+            "name": "file",
+            "in": "formData",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the application id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["application"],
+        "summary": "Deletes an image of an application.",
+        "operationId": "removeAppImage",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the application id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/application/{id}/message": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "produces": ["application/json"],
+        "tags": ["message"],
+        "summary": "Return all messages from a specific application.",
+        "operationId": "getAppMessages",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the application id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer",
+            "default": 100,
+            "description": "the maximal amount of messages to return",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "minimum": 0,
+            "type": "integer",
+            "format": "int64",
+            "description": "return all messages with an ID less than this value",
+            "name": "since",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/PagedMessages"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "produces": ["application/json"],
+        "tags": ["message"],
+        "summary": "Delete all messages from a specific application.",
+        "operationId": "deleteAppMessages",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the application id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/application/{id}/security": {
+      "put": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["application"],
+        "summary": "Perform security updates on an application.",
+        "operationId": "updateAppSecurity",
+        "parameters": [
+          {
+            "description": "security update action descriptor",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SecurityUpdateAction"
+            }
+          },
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the application id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/SecurityUpdateActionResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/auth/local/login": {
+      "post": {
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/x-www-form-urlencoded"],
+        "produces": ["application/json"],
+        "tags": ["auth"],
+        "summary": "Authenticate via basic auth and create a session.",
+        "operationId": "localLogin",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "the client name to create",
+            "name": "name",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/CurrentUser"
+            },
+            "headers": {
+              "Set-Cookie": {
+                "type": "string",
+                "description": "session cookie"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "security": [
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Clears the session cookie and deletes the associated client.",
+        "produces": ["application/json"],
+        "tags": ["auth"],
+        "summary": "End the current session.",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "headers": {
+              "Set-Cookie": {
+                "type": "string",
+                "description": "cleared session cookie"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/auth/oidc/callback": {
+      "get": {
+        "description": "Exchanges the authorization code for tokens, resolves the user,\ncreates a gotify client, sets a session cookie, and redirects to the UI.",
+        "tags": ["oidc"],
+        "summary": "Handle the OIDC provider callback (browser).",
+        "operationId": "oidcCallback",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "the authorization code from the OIDC provider",
+            "name": "code",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "the state parameter for CSRF protection",
+            "name": "state",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "307": {
+            "description": "Redirect to UI"
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/auth/oidc/elevate": {
+      "get": {
+        "description": "Redirects the user to the OIDC provider's authorization endpoint. After\nsuccessful authentication, the referenced client session is elevated for\nthe requested duration.",
+        "tags": ["oidc"],
+        "summary": "Start the OIDC flow to elevate an existing client session (browser).",
+        "operationId": "oidcElevate",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the client id to elevate",
+            "name": "id",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "how long the elevation should last, in seconds",
+            "name": "durationSeconds",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to OIDC provider"
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/auth/oidc/external/authorize": {
+      "post": {
+        "description": "The app generates a PKCE code_verifier and code_challenge, then calls this\nendpoint. The server forwards the code_challenge to the OIDC provider and\nreturns the authorization URL for the app to open in a browser.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["oidc"],
+        "summary": "Initiate the OIDC authorization flow for a native app.",
+        "operationId": "externalAuthorize",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OIDCExternalAuthorizeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/OIDCExternalAuthorizeResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/auth/oidc/external/token": {
+      "post": {
+        "description": "After the user authenticates with the OIDC provider and the app receives\nthe authorization code via redirect, the app calls this endpoint with the\ncode and PKCE code_verifier. The server exchanges the code with the OIDC\nprovider and returns a gotify client token.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["oidc"],
+        "summary": "Exchange an authorization code for a gotify client token.",
+        "operationId": "externalToken",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OIDCExternalTokenRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/OIDCExternalTokenResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/auth/oidc/login": {
+      "get": {
+        "description": "Redirects the user to the OIDC provider's authorization endpoint.\nAfter authentication, the provider redirects back to the callback endpoint.",
+        "tags": ["oidc"],
+        "summary": "Start the OIDC login flow (browser).",
+        "operationId": "oidcLogin",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "the client name to create after login",
+            "name": "name",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to OIDC provider"
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/client": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["client"],
+        "summary": "Return all clients.",
+        "operationId": "getClients",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Client"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["client"],
+        "summary": "Create a client.",
+        "operationId": "createClient",
+        "parameters": [
+          {
+            "description": "the client to add",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ClientParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Client"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/client/{id}": {
+      "put": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["client"],
+        "summary": "Update a client.",
+        "operationId": "updateClient",
+        "parameters": [
+          {
+            "description": "the client to update",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ClientParams"
+            }
+          },
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the client id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Client"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["client"],
+        "summary": "Delete a client.",
+        "operationId": "deleteClient",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the client id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/client/{id}/elevate": {
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["client"],
+        "summary": "Elevate a client session.",
+        "operationId": "elevateClient",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the client id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "the elevation request",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ElevateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/current/user": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Return the current user.",
+        "operationId": "currentUser",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/current/user/password": {
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Update the password of the current user.",
+        "operationId": "updateCurrentUser",
+        "parameters": [
+          {
+            "description": "the user",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserPass"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/gotifyinfo": {
+      "get": {
+        "produces": ["application/json"],
+        "tags": ["info"],
+        "summary": "Get gotify information.",
+        "operationId": "getInfo",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/GotifyInfo"
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "produces": ["application/json"],
+        "tags": ["info"],
+        "summary": "Get health information.",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Health"
+            }
+          },
+          "500": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Health"
+            }
+          }
+        }
+      }
+    },
+    "/message": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "produces": ["application/json"],
+        "tags": ["message"],
+        "summary": "Return all messages.",
+        "operationId": "getMessages",
+        "parameters": [
+          {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer",
+            "default": 100,
+            "description": "the maximal amount of messages to return",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "minimum": 0,
+            "type": "integer",
+            "format": "int64",
+            "description": "return all messages with an ID less than this value",
+            "name": "since",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/PagedMessages"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "appTokenAuthorizationHeader": []
+          },
+          {
+            "appTokenHeader": []
+          },
+          {
+            "appTokenQuery": []
+          },
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "__NOTE__: When authenticating with a client token or basic auth, the request body\nmust include \"appid\" referencing an application owned by the authenticated user.\nWhen authenticating with an application token, the application is derived from the\ntoken and any \"appid\" in the body is ignored.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["message"],
+        "summary": "Create a message.",
+        "operationId": "createMessage",
+        "parameters": [
+          {
+            "description": "the message to add",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateMessage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Message"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "produces": ["application/json"],
+        "tags": ["message"],
+        "summary": "Delete all messages.",
+        "operationId": "deleteMessages",
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/message/{id}": {
+      "delete": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "produces": ["application/json"],
+        "tags": ["message"],
+        "summary": "Deletes a message with an id.",
+        "operationId": "deleteMessage",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the message id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/plugin": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["plugin"],
+        "summary": "Return all plugins.",
+        "operationId": "getPlugins",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PluginConf"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/plugin/{id}/config": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/x-yaml"],
+        "tags": ["plugin"],
+        "summary": "Get YAML configuration for Configurer plugin.",
+        "operationId": "getPluginConfig",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the plugin id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "description": "plugin configuration",
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/x-yaml"],
+        "produces": ["application/json"],
+        "tags": ["plugin"],
+        "summary": "Update YAML configuration for Configurer plugin.",
+        "operationId": "updatePluginConfig",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the plugin id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/plugin/{id}/disable": {
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["plugin"],
+        "summary": "Disable a plugin.",
+        "operationId": "disablePlugin",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the plugin id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/plugin/{id}/display": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["plugin"],
+        "summary": "Get display info for a Displayer plugin.",
+        "operationId": "getPluginDisplay",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the plugin id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/plugin/{id}/enable": {
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["plugin"],
+        "summary": "Enable a plugin.",
+        "operationId": "enablePlugin",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the plugin id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/stream": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "produces": ["application/json"],
+        "tags": ["message"],
+        "summary": "Websocket, return newly created messages.",
+        "operationId": "streamMessages",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/Message"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/user": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Return all users.",
+        "operationId": "getUsers",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/User"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "With enabled registration: non admin users can be created without authentication.\nWith disabled registrations: users can only be created by admin users.\n\nRequires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Create a user.",
+        "operationId": "createUser",
+        "parameters": [
+          {
+            "description": "the user to add",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateUserExternal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/user/{id}": {
+      "get": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Get a user.",
+        "operationId": "getUser",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the user id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Update a user.",
+        "operationId": "updateUser",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the user id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "the updated user",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateUserExternal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "clientTokenAuthorizationHeader": []
+          },
+          {
+            "clientTokenHeader": []
+          },
+          {
+            "clientTokenQuery": []
+          },
+          {
+            "basicAuth": []
+          }
+        ],
+        "description": "Requires elevated authentication.",
+        "produces": ["application/json"],
+        "tags": ["user"],
+        "summary": "Deletes a user.",
+        "operationId": "deleteUser",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "description": "the user id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "produces": ["application/json"],
+        "tags": ["info"],
+        "summary": "Get version information.",
+        "operationId": "getVersion",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "$ref": "#/definitions/VersionInfo"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Application": {
+      "description": "The Application holds information about an app which can send notifications.",
+      "type": "object",
+      "title": "Application Model",
+      "required": ["id", "name", "description", "internal", "image", "createdAt", "sortKey"],
+      "properties": {
+        "createdAt": {
+          "description": "The date the application was created.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CreatedAt",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "defaultPriority": {
+          "description": "The default priority of messages sent by this application. Defaults to 0.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "DefaultPriority",
+          "example": 4
+        },
+        "description": {
+          "description": "The description of the application.",
+          "type": "string",
+          "x-go-name": "Description",
+          "example": "Backup server for the interwebs"
+        },
+        "id": {
+          "description": "The application id.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ID",
+          "readOnly": true,
+          "example": 5
+        },
+        "image": {
+          "description": "The image of the application.",
+          "type": "string",
+          "x-go-name": "Image",
+          "readOnly": true,
+          "example": "image/image.jpeg"
+        },
+        "internal": {
+          "description": "Whether the application is an internal application. Internal applications should not be deleted.",
+          "type": "boolean",
+          "x-go-name": "Internal",
+          "readOnly": true,
+          "example": false
+        },
+        "lastUsed": {
+          "description": "The last time the application token was used.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "LastUsed",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "name": {
+          "description": "The application name. This is how the application should be displayed to the user.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "Backup Server"
+        },
+        "sortKey": {
+          "description": "The sort key of this application. Uses fractional indexing.",
+          "type": "string",
+          "x-go-name": "SortKey",
+          "example": "a1"
+        },
+        "token": {
+          "description": "The application token. Can be used as `appToken`. See Authentication.",
+          "type": "string",
+          "x-go-name": "Token",
+          "readOnly": true,
+          "example": "AWH0wZ5r0Mbac.r"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "ApplicationParams": {
+      "description": "Params allowed to create or update Applications.",
+      "type": "object",
+      "title": "Application Params Model",
+      "required": ["name"],
+      "properties": {
+        "defaultPriority": {
+          "description": "The default priority of messages sent by this application. Defaults to 0.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "DefaultPriority",
+          "example": 5
+        },
+        "description": {
+          "description": "The description of the application.",
+          "type": "string",
+          "x-go-name": "Description",
+          "example": "Backup server for the interwebs"
+        },
+        "name": {
+          "description": "The application name. This is how the application should be displayed to the user.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "Backup Server"
+        },
+        "sortKey": {
+          "description": "The sortKey for the application. Uses fractional indexing.",
+          "type": "string",
+          "x-go-name": "SortKey",
+          "example": "a1"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/api"
+    },
+    "Client": {
+      "description": "The Client holds information about a device which can receive notifications (and other stuff).",
+      "type": "object",
+      "title": "Client Model",
+      "required": ["id", "name", "createdAt"],
+      "properties": {
+        "createdAt": {
+          "description": "The date the client was created.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CreatedAt",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "elevatedUntil": {
+          "description": "The time until which this client's session is elevated.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "ElevatedUntil",
+          "readOnly": true
+        },
+        "expiresAfterInactivitySeconds": {
+          "description": "The number of seconds of inactivity after which the client is removed.\n0 means the client never expires.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ExpiresAfterInactivitySeconds",
+          "example": 2592000
+        },
+        "expiresAt": {
+          "description": "The time at which this client will expire due to inactivity, or null if it never expires.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "ExpiresAt",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "id": {
+          "description": "The client id.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ID",
+          "readOnly": true,
+          "example": 5
+        },
+        "lastUsed": {
+          "description": "The last time the client token was used.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "LastUsed",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "name": {
+          "description": "The client name. This is how the client should be displayed to the user.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "Android Phone"
+        },
+        "token": {
+          "description": "The client token. Can be used as `clientToken`. See Authentication.",
+          "type": "string",
+          "x-go-name": "Token",
+          "readOnly": true,
+          "example": "CWH0wZ5r0Mbac.r"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "ClientParams": {
+      "description": "Params allowed to create or update Clients.",
+      "type": "object",
+      "title": "Client Params Model",
+      "required": ["name"],
+      "properties": {
+        "expiresAfterInactivitySeconds": {
+          "description": "The number of seconds of inactivity after which the client is removed.\n0 (or omitted) means the client never expires.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ExpiresAfterInactivitySeconds",
+          "example": 2592000
+        },
+        "name": {
+          "description": "The client name",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "My Client"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/api"
+    },
+    "CreateMessage": {
+      "description": "The CreateMessage holds information about a message that will be sent.",
+      "type": "object",
+      "title": "CreateMessage Model",
+      "required": ["message"],
+      "properties": {
+        "appid": {
+          "description": "The application id that send this message. Always set when returned via the API.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ApplicationID",
+          "example": 5
+        },
+        "extras": {
+          "description": "The extra data sent along the message.\n\nThe extra fields are stored in a key-value scheme. Only accepted in CreateMessage requests with application/json content-type.\n\nThe keys should be in the following format: &lt;top-namespace&gt;::[&lt;sub-namespace&gt;::]&lt;action&gt;\n\nThese namespaces are reserved and might be used in the official clients: gotify android ios web server client. Do not use them for other purposes.",
+          "type": "object",
+          "additionalProperties": {},
+          "x-go-name": "Extras",
+          "example": {
+            "home::appliances::lighting::on": {
+              "brightness": 15
+            },
+            "home::appliances::thermostat::change_temperature": {
+              "temperature": 23
+            }
+          }
+        },
+        "message": {
+          "description": "The message. Markdown (excluding html) is allowed.",
+          "type": "string",
+          "x-go-name": "Message",
+          "example": "**Backup** was successfully finished."
+        },
+        "priority": {
+          "description": "The priority of the message. If unset, then the default priority of the\napplication will be used.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "Priority",
+          "example": 2
+        },
+        "title": {
+          "description": "The title of the message.",
+          "type": "string",
+          "x-go-name": "Title",
+          "example": "Backup"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "CreateUserExternal": {
+      "description": "Used for user creation.",
+      "type": "object",
+      "title": "CreateUserExternal Model",
+      "required": ["name", "admin", "pass"],
+      "properties": {
+        "admin": {
+          "description": "If the user is an administrator.",
+          "type": "boolean",
+          "x-go-name": "Admin",
+          "example": true
+        },
+        "name": {
+          "description": "The user name. For login.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "unicorn"
+        },
+        "pass": {
+          "description": "The user password. For login.",
+          "type": "string",
+          "x-go-name": "Pass",
+          "example": "nrocinu"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "CurrentUser": {
+      "description": "CurrentUserExternal Model",
+      "type": "object",
+      "required": ["id", "name", "admin", "createdAt"],
+      "properties": {
+        "admin": {
+          "description": "If the user is an administrator.",
+          "type": "boolean",
+          "x-go-name": "Admin",
+          "example": true
+        },
+        "clientId": {
+          "description": "The client id of the current session.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ClientID",
+          "readOnly": true,
+          "example": 5
+        },
+        "createdAt": {
+          "description": "The date the user was created.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CreatedAt",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "elevatedUntil": {
+          "description": "The time until which the session is elevated.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "ElevatedUntil",
+          "readOnly": true
+        },
+        "id": {
+          "description": "The user id.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ID",
+          "readOnly": true,
+          "example": 25
+        },
+        "name": {
+          "description": "The user name. For login.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "unicorn"
+        }
+      },
+      "x-go-name": "CurrentUserExternal",
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "ElevateRequest": {
+      "type": "object",
+      "title": "ElevateRequest parameters for client elevation.",
+      "required": ["durationSeconds"],
+      "properties": {
+        "durationSeconds": {
+          "description": "How long the elevation should last, in seconds.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "DurationSeconds",
+          "example": 900
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "Error": {
+      "description": "The Error contains error relevant information.",
+      "type": "object",
+      "title": "Error Model",
+      "required": ["error", "errorCode", "errorDescription"],
+      "properties": {
+        "error": {
+          "description": "The general error message",
+          "type": "string",
+          "x-go-name": "Error",
+          "example": "Unauthorized"
+        },
+        "errorCode": {
+          "description": "The http error code.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ErrorCode",
+          "example": 401
+        },
+        "errorDescription": {
+          "description": "The http error code.",
+          "type": "string",
+          "x-go-name": "ErrorDescription",
+          "example": "you need to provide a valid access token or user credentials to access this api"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "GotifyInfo": {
+      "description": "GotifyInfo Model",
+      "type": "object",
+      "required": ["version", "register", "localAuth", "oidc", "oidcIdpName", "oidcAutoRedirect"],
+      "properties": {
+        "localAuth": {
+          "description": "If local authentication is enabled.",
+          "type": "boolean",
+          "x-go-name": "LocalAuth",
+          "example": true
+        },
+        "oidc": {
+          "description": "If oidc is enabled.",
+          "type": "boolean",
+          "x-go-name": "Oidc",
+          "example": true
+        },
+        "oidcAutoRedirect": {
+          "description": "If the WebUI should automatically redirect to the OIDC identity\nprovider instead of showing the login page.",
+          "type": "boolean",
+          "x-go-name": "OIDCAutoRedirect",
+          "example": false
+        },
+        "oidcIdpName": {
+          "description": "Name of the OIDC identity provider.",
+          "type": "string",
+          "x-go-name": "OIDCIDPName",
+          "example": "OIDC"
+        },
+        "register": {
+          "description": "If registration is enabled.",
+          "type": "boolean",
+          "x-go-name": "Register",
+          "example": true
+        },
+        "version": {
+          "description": "The current version.",
+          "type": "string",
+          "x-go-name": "Version",
+          "example": "5.2.6"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "Health": {
+      "description": "Health represents how healthy the application is.",
+      "type": "object",
+      "title": "Health Model",
+      "required": ["health", "database"],
+      "properties": {
+        "database": {
+          "description": "The health of the database connection.",
+          "type": "string",
+          "x-go-name": "Database",
+          "example": "green"
+        },
+        "health": {
+          "description": "The health of the overall application.",
+          "type": "string",
+          "x-go-name": "Health",
+          "example": "green"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "Message": {
+      "description": "The MessageExternal holds information about a message which was sent by an Application.",
+      "type": "object",
+      "title": "MessageExternal Model",
+      "required": ["id", "appid", "message", "date"],
+      "properties": {
+        "appid": {
+          "description": "The application id that send this message.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ApplicationID",
+          "readOnly": true,
+          "example": 5
+        },
+        "date": {
+          "description": "The date the message was created.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "Date",
+          "readOnly": true,
+          "example": "2018-02-27T19:36:10.5045044+01:00"
+        },
+        "extras": {
+          "description": "The extra data sent along the message.\n\nThe extra fields are stored in a key-value scheme. Only accepted in CreateMessage requests with application/json content-type.\n\nThe keys should be in the following format: &lt;top-namespace&gt;::[&lt;sub-namespace&gt;::]&lt;action&gt;\n\nThese namespaces are reserved and might be used in the official clients: gotify android ios web server client. Do not use them for other purposes.",
+          "type": "object",
+          "additionalProperties": {},
+          "x-go-name": "Extras",
+          "example": {
+            "home::appliances::lighting::on": {
+              "brightness": 15
+            },
+            "home::appliances::thermostat::change_temperature": {
+              "temperature": 23
+            }
+          }
+        },
+        "id": {
+          "description": "The message id.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ID",
+          "readOnly": true,
+          "example": 25
+        },
+        "message": {
+          "description": "The message. Markdown (excluding html) is allowed.",
+          "type": "string",
+          "x-go-name": "Message",
+          "example": "**Backup** was successfully finished."
+        },
+        "priority": {
+          "description": "The priority of the message. If unset, then the default priority of the\napplication will be used.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "Priority",
+          "example": 2
+        },
+        "title": {
+          "description": "The title of the message.",
+          "type": "string",
+          "x-go-name": "Title",
+          "example": "Backup"
+        }
+      },
+      "x-go-name": "MessageExternal",
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "OIDCExternalAuthorizeRequest": {
+      "description": "Used to initiate the OIDC authorization flow for an external client.",
+      "type": "object",
+      "title": "OIDCExternalAuthorizeRequest Model",
+      "required": ["code_challenge", "redirect_uri", "name"],
+      "properties": {
+        "code_challenge": {
+          "description": "The PKCE code challenge (S256).",
+          "type": "string",
+          "x-go-name": "CodeChallenge",
+          "example": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+        },
+        "name": {
+          "description": "The client name to display in gotify.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "Android Phone"
+        },
+        "redirect_uri": {
+          "description": "The app's redirect URI.",
+          "type": "string",
+          "x-go-name": "RedirectURI",
+          "example": "gotify://oidc/callback"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "OIDCExternalAuthorizeResponse": {
+      "description": "Returned after initiating the OIDC authorization flow.",
+      "type": "object",
+      "title": "OIDCExternalAuthorizeResponse Model",
+      "required": ["authorize_url", "state"],
+      "properties": {
+        "authorize_url": {
+          "description": "The URL to open in the browser to authenticate with the OIDC provider.",
+          "type": "string",
+          "x-go-name": "AuthorizeURL",
+          "example": "https://auth.example.com/authorize?client_id=gotify&..."
+        },
+        "state": {
+          "description": "The state parameter to send back with the token exchange request.",
+          "type": "string",
+          "x-go-name": "State",
+          "example": "Android Phone:a1b2c3d4e5f6"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "OIDCExternalTokenRequest": {
+      "description": "Used to exchange an authorization code for a gotify client token.",
+      "type": "object",
+      "title": "OIDCExternalTokenRequest Model",
+      "required": ["code", "state", "code_verifier"],
+      "properties": {
+        "code": {
+          "description": "The authorization code from the OIDC provider.",
+          "type": "string",
+          "x-go-name": "Code"
+        },
+        "code_verifier": {
+          "description": "The PKCE code verifier.",
+          "type": "string",
+          "x-go-name": "CodeVerifier",
+          "example": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+        },
+        "state": {
+          "description": "The state from the authorize response.",
+          "type": "string",
+          "x-go-name": "State",
+          "example": "Android Phone:a1b2c3d4e5f6"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "OIDCExternalTokenResponse": {
+      "description": "Returned after a successful token exchange.",
+      "type": "object",
+      "title": "OIDCExternalTokenResponse Model",
+      "required": ["token", "user"],
+      "properties": {
+        "token": {
+          "description": "The gotify client token for API authentication.",
+          "type": "string",
+          "x-go-name": "Token",
+          "example": "CWH0wZ5r0Mbac.r"
+        },
+        "user": {
+          "$ref": "#/definitions/User"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "PagedMessages": {
+      "description": "Wrapper for the paging and the messages.",
+      "type": "object",
+      "title": "PagedMessages Model",
+      "required": ["paging", "messages"],
+      "properties": {
+        "messages": {
+          "description": "The messages.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Message"
+          },
+          "x-go-name": "Messages",
+          "readOnly": true
+        },
+        "paging": {
+          "$ref": "#/definitions/Paging"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "Paging": {
+      "description": "The Paging holds information about the limit and making requests to the next page.",
+      "type": "object",
+      "title": "Paging Model",
+      "required": ["size", "since", "limit"],
+      "properties": {
+        "limit": {
+          "description": "The limit of the messages for the current request.",
+          "type": "integer",
+          "format": "int64",
+          "maximum": 200,
+          "minimum": 1,
+          "x-go-name": "Limit",
+          "readOnly": true,
+          "example": 123
+        },
+        "next": {
+          "description": "The relative path for the next page. Empty/Null when no next page is available. Should be combined with the gotify base url.",
+          "type": "string",
+          "x-go-name": "Next",
+          "readOnly": true,
+          "example": "/message?limit=50&since=123456"
+        },
+        "since": {
+          "description": "The ID of the last message returned in the current request. Use this as alternative to the next link.",
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0,
+          "x-go-name": "Since",
+          "readOnly": true,
+          "example": 5
+        },
+        "size": {
+          "description": "The amount of messages that got returned in the current request.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "Size",
+          "readOnly": true,
+          "example": 5
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "PluginConf": {
+      "description": "Holds information about a plugin instance for one user.",
+      "type": "object",
+      "title": "PluginConfExternal Model",
+      "required": ["id", "createdAt", "name", "token", "modulePath", "enabled", "capabilities"],
+      "properties": {
+        "author": {
+          "description": "The author of the plugin.",
+          "type": "string",
+          "x-go-name": "Author",
+          "readOnly": true,
+          "example": "jmattheis"
+        },
+        "capabilities": {
+          "description": "Capabilities the plugin provides",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Capabilities",
+          "example": ["webhook", "display"]
+        },
+        "createdAt": {
+          "description": "The date the plugin was created.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CreatedAt",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "enabled": {
+          "description": "Whether the plugin instance is enabled.",
+          "type": "boolean",
+          "x-go-name": "Enabled",
+          "example": true
+        },
+        "id": {
+          "description": "The plugin id.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ID",
+          "readOnly": true,
+          "example": 25
+        },
+        "license": {
+          "description": "The license of the plugin.",
+          "type": "string",
+          "x-go-name": "License",
+          "readOnly": true,
+          "example": "MIT"
+        },
+        "modulePath": {
+          "description": "The module path of the plugin.",
+          "type": "string",
+          "x-go-name": "ModulePath",
+          "readOnly": true,
+          "example": "github.com/gotify/server/plugin/example/echo"
+        },
+        "name": {
+          "description": "The plugin name.",
+          "type": "string",
+          "x-go-name": "Name",
+          "readOnly": true,
+          "example": "RSS poller"
+        },
+        "token": {
+          "description": "The user name. For login.",
+          "type": "string",
+          "x-go-name": "Token",
+          "example": "P1234"
+        },
+        "website": {
+          "description": "The website of the plugin.",
+          "type": "string",
+          "x-go-name": "Website",
+          "readOnly": true,
+          "example": "gotify.net"
+        }
+      },
+      "x-go-name": "PluginConfExternal",
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "RegenerateTokenResponse": {
+      "description": "The RegenerateTokenResponse holds information about the response to the regenerate token action.",
+      "type": "object",
+      "title": "RegenerateTokenResponse Model",
+      "required": ["token"],
+      "properties": {
+        "token": {
+          "description": "The new token.",
+          "type": "string",
+          "x-go-name": "Token",
+          "readOnly": true,
+          "example": "gtfya.e2NcJK7AenXBPIRB3S03JsBlmy0V6xP8h0hwSiAJae8"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "SecurityUpdateAction": {
+      "description": "The SecurityUpdateAction describes the details of a requested security update.",
+      "type": "object",
+      "title": "SecurityUpdateAction Model",
+      "properties": {
+        "regenerateToken": {
+          "description": "Whether to regenerate the token. Your client token must be elevated to perform this action.",
+          "type": "boolean",
+          "x-go-name": "RegenerateToken",
+          "example": true
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "SecurityUpdateActionResponse": {
+      "description": "The SecurityUpdateActionResponse holds information about the response to a security update request.",
+      "type": "object",
+      "title": "SecurityUpdateActionResponse Model",
+      "properties": {
+        "regenerateToken": {
+          "$ref": "#/definitions/RegenerateTokenResponse"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "UpdateUserExternal": {
+      "description": "Used for updating a user.",
+      "type": "object",
+      "title": "UpdateUserExternal Model",
+      "required": ["name", "admin"],
+      "properties": {
+        "admin": {
+          "description": "If the user is an administrator.",
+          "type": "boolean",
+          "x-go-name": "Admin",
+          "example": true
+        },
+        "name": {
+          "description": "The user name. For login.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "unicorn"
+        },
+        "pass": {
+          "description": "The user password. For login. Empty for using old password",
+          "type": "string",
+          "x-go-name": "Pass",
+          "example": "nrocinu"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "User": {
+      "description": "The User holds information about permission and other stuff.",
+      "type": "object",
+      "title": "UserExternal Model",
+      "required": ["id", "name", "admin", "createdAt"],
+      "properties": {
+        "admin": {
+          "description": "If the user is an administrator.",
+          "type": "boolean",
+          "x-go-name": "Admin",
+          "example": true
+        },
+        "createdAt": {
+          "description": "The date the user was created.",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CreatedAt",
+          "readOnly": true,
+          "example": "2019-01-01T00:00:00Z"
+        },
+        "id": {
+          "description": "The user id.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ID",
+          "readOnly": true,
+          "example": 25
+        },
+        "name": {
+          "description": "The user name. For login.",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "unicorn"
+        }
+      },
+      "x-go-name": "UserExternal",
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "UserPass": {
+      "description": "The Password for updating the user.",
+      "type": "object",
+      "title": "UserExternalPass Model",
+      "required": ["pass"],
+      "properties": {
+        "pass": {
+          "description": "The user password. For login.",
+          "type": "string",
+          "x-go-name": "Pass",
+          "example": "nrocinu"
+        }
+      },
+      "x-go-name": "UserExternalPass",
+      "x-go-package": "github.com/gotify/server/v3/model"
+    },
+    "VersionInfo": {
+      "description": "VersionInfo Model",
+      "type": "object",
+      "required": ["version", "commit", "buildDate"],
+      "properties": {
+        "buildDate": {
+          "description": "The date on which this binary was built.",
+          "type": "string",
+          "x-go-name": "BuildDate",
+          "example": "2018-02-27T19:36:10.5045044+01:00"
+        },
+        "commit": {
+          "description": "The git commit hash on which this binary was built.",
+          "type": "string",
+          "x-go-name": "Commit",
+          "example": "ae9512b6b6feea56a110d59a3353ea3b9c293864"
+        },
+        "version": {
+          "description": "The current version.",
+          "type": "string",
+          "x-go-name": "Version",
+          "example": "5.2.6"
+        }
+      },
+      "x-go-package": "github.com/gotify/server/v3/model"
+    }
+  },
+  "securityDefinitions": {
+    "appTokenAuthorizationHeader": {
+      "description": "Enter an application token with the `Bearer` prefix, e.g. `Bearer Axxxxxxxxxx`.",
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    },
+    "appTokenHeader": {
+      "type": "apiKey",
+      "name": "X-Gotify-Key",
+      "in": "header"
+    },
+    "appTokenQuery": {
+      "type": "apiKey",
+      "name": "token",
+      "in": "query"
+    },
+    "basicAuth": {
+      "type": "basic"
+    },
+    "clientTokenAuthorizationHeader": {
+      "description": "Enter a client token with the `Bearer` prefix, e.g. `Bearer Cxxxxxxxxxx`.",
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    },
+    "clientTokenHeader": {
+      "type": "apiKey",
+      "name": "X-Gotify-Key",
+      "in": "header"
+    },
+    "clientTokenQuery": {
+      "type": "apiKey",
+      "name": "token",
+      "in": "query"
+    }
+  }
+}

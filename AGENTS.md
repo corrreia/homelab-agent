@@ -120,46 +120,46 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 
 ## File landmarks
 
-| Path | What lives there |
-|---|---|
-| `src/routes/__root.tsx` | SSR shell, session gate, top-level nav |
-| `src/routes/api/*` | HTTP API handlers (all session-gated) |
-| `src/routes/mcp.tsx` | MCP endpoint (Better Auth MCP plugin) |
-| `src/lib/auth.ts` | Better Auth + generic OIDC config |
-| `src/lib/sources-repo.ts` | Source CRUD, encryption boundary |
-| `src/lib/encryption.ts` | AES-GCM helpers + HKDF |
-| `src/lib/proxy.ts` | `/api/proxy/:slug/*` forwarding |
-| `src/lib/mcp-server.ts` | Code Mode MCP server wiring |
-| `src/lib/mcp-elicitation.ts` | MCP write-confirmation + progress helpers (`confirmAction`) |
-| `src/lib/mcp-remote-tools.ts` | SSH tools: remote-bash/read/write/edit/glob/grep |
-| `src/lib/mcp-host-tools.ts` | Host-management tools: host-list/add/remove |
-| `src/lib/ssh.ts` | SSH connect (host-key TOFU), tool primitives over hosts |
-| `src/lib/ssh-client.ts` | DB-free ssh2 primitives: capped exec, kill-on-timeout, atomic SFTP write |
-| `src/lib/ssh-helpers.ts` | Pure SSH helpers (line format, edit, find/grep, TOFU verdict) |
-| `src/lib/ssh-keys.ts` | ed25519 agent keypair generation |
-| `src/lib/hosts-repo.ts` | Host CRUD + agent-key encryption boundary |
-| `src/routes/index.tsx` | The whole UI: MCP bar, Services + Hosts sections, add-service forms |
-| `src/routes/hosts.tsx` | Redirect to `/` (hosts moved onto the home page) |
-| `src/components/McpBar.tsx` | Counts + the MCP endpoint URL and "copy prompt" affordance |
-| `src/components/HostsSection.tsx` | Hosts list, add form, agent public key |
-| `src/components/ConfirmStrip.tsx` | Inline two-step confirm for destructive UI actions |
-| `src/lib/quickjs-executor.ts` | QuickJS-based Code Mode executor |
-| `src/lib/spec-merger.ts` | Combine per-source specs into one |
-| `src/lib/templates.ts` | Built-in source templates |
-| `specs/` | Bundled OpenAPI JSONs (refresh via `pnpm update-specs`; bazarr/jellyfin/unifi are manual) |
-| `scripts/update-specs.mjs` | Pulls bundled specs from canonical upstream URLs |
-| `migrations/` | Drizzle migrations (checked in) |
-| `server.entry.js` | Prod entrypoint (migrate → serve) |
-| `.github/workflows/release.yml` | Builds + pushes multi-arch image to GHCR on tag/`main` |
+| Path                              | What lives there                                                                                                                                                           |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes/__root.tsx`           | SSR shell, session gate, top-level nav                                                                                                                                     |
+| `src/routes/api/*`                | HTTP API handlers (all session-gated)                                                                                                                                      |
+| `src/routes/mcp.tsx`              | MCP endpoint (Better Auth MCP plugin)                                                                                                                                      |
+| `src/lib/auth.ts`                 | Better Auth + generic OIDC config                                                                                                                                          |
+| `src/lib/sources-repo.ts`         | Source CRUD, encryption boundary                                                                                                                                           |
+| `src/lib/encryption.ts`           | AES-GCM helpers + HKDF                                                                                                                                                     |
+| `src/lib/proxy.ts`                | `/api/proxy/:slug/*` forwarding                                                                                                                                            |
+| `src/lib/mcp-server.ts`           | Code Mode MCP server wiring                                                                                                                                                |
+| `src/lib/mcp-elicitation.ts`      | MCP write-confirmation + progress helpers (`confirmAction`)                                                                                                                |
+| `src/lib/mcp-remote-tools.ts`     | SSH tools: remote-bash/read/write/edit/glob/grep                                                                                                                           |
+| `src/lib/mcp-host-tools.ts`       | Host-management tools: host-list/add/remove                                                                                                                                |
+| `src/lib/ssh.ts`                  | SSH connect (host-key TOFU), tool primitives over hosts                                                                                                                    |
+| `src/lib/ssh-client.ts`           | DB-free ssh2 primitives: capped exec, kill-on-timeout, atomic SFTP write                                                                                                   |
+| `src/lib/ssh-helpers.ts`          | Pure SSH helpers (line format, edit, find/grep, TOFU verdict)                                                                                                              |
+| `src/lib/ssh-keys.ts`             | ed25519 agent keypair generation                                                                                                                                           |
+| `src/lib/hosts-repo.ts`           | Host CRUD + agent-key encryption boundary                                                                                                                                  |
+| `src/routes/index.tsx`            | The whole UI: MCP bar, Services + Hosts sections, add-service forms                                                                                                        |
+| `src/routes/hosts.tsx`            | Redirect to `/` (hosts moved onto the home page)                                                                                                                           |
+| `src/components/McpBar.tsx`       | Counts + the MCP endpoint URL and "copy prompt" affordance                                                                                                                 |
+| `src/components/HostsSection.tsx` | Hosts list, add form, agent public key                                                                                                                                     |
+| `src/components/ConfirmStrip.tsx` | Inline two-step confirm for destructive UI actions                                                                                                                         |
+| `src/lib/quickjs-executor.ts`     | QuickJS-based Code Mode executor                                                                                                                                           |
+| `src/lib/spec-merger.ts`          | Combine per-source specs into one                                                                                                                                          |
+| `src/lib/templates.ts`            | Built-in source templates                                                                                                                                                  |
+| `specs/`                          | Bundled OpenAPI JSONs (refresh via `pnpm update-specs`; version-pinned dirs — jellyfin, unifi, kavita, grafana, authentik, frigate, immich/2.0.0 — plus bazarr are manual) |
+| `scripts/update-specs.mjs`        | Pulls bundled specs from canonical upstream URLs                                                                                                                           |
+| `migrations/`                     | Drizzle migrations (checked in)                                                                                                                                            |
+| `server.entry.js`                 | Prod entrypoint (migrate → serve)                                                                                                                                          |
+| `.github/workflows/release.yml`   | Builds + pushes multi-arch image to GHCR on tag/`main`                                                                                                                     |
 
 ## Env vars
 
-| Var | Purpose |
-|---|---|
-| `BETTER_AUTH_SECRET` | Better Auth session signing secret. Required. |
-| `ENCRYPTION_KEY` | HKDF master for credential encryption. Required. |
-| `AUTH_URL` | Public origin (OAuth redirects). |
-| `OIDC_ISSUER` | OIDC issuer URL (any standards-compliant provider). |
-| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | OIDC client creds. |
-| `PORT` | Default `3000`. |
-| `DANGEROUSLY_DISABLE_AUTH` | `true` turns off all auth (UI, `/api/*`, `/mcp`) and makes `OIDC_*` optional. Prototyping only. |
+| Var                                     | Purpose                                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`                    | Better Auth session signing secret. Required.                                                   |
+| `ENCRYPTION_KEY`                        | HKDF master for credential encryption. Required.                                                |
+| `AUTH_URL`                              | Public origin (OAuth redirects).                                                                |
+| `OIDC_ISSUER`                           | OIDC issuer URL (any standards-compliant provider).                                             |
+| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | OIDC client creds.                                                                              |
+| `PORT`                                  | Default `3000`.                                                                                 |
+| `DANGEROUSLY_DISABLE_AUTH`              | `true` turns off all auth (UI, `/api/*`, `/mcp`) and makes `OIDC_*` optional. Prototyping only. |

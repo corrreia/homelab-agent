@@ -6,7 +6,7 @@
 
 ---
 
-Homelab Agent is a self-hosted gateway that aggregates the OpenAPI specs of your homelab services (Jellyfin, Sonarr, Radarr, Prowlarr, Lidarr, Bazarr, Overseerr, UniFi, Immich, Portainer, …) and exposes them behind **a single authenticated MCP endpoint**, so an LLM can control the whole rack without you shipping API keys around. It ships with a small web UI for adding sources and watching their health.
+Homelab Agent is a self-hosted gateway that aggregates the OpenAPI specs of your homelab services (Jellyfin, Sonarr, Radarr, Prowlarr, Lidarr, Bazarr, Seerr, UniFi, Immich, Portainer, Grafana, Gitea, authentik, AdGuard Home, Frigate, Komga, Kavita, Audiobookshelf, PhotoPrism, Netdata, Docker, Ollama, and ~15 more) and exposes them behind **a single authenticated MCP endpoint**, so an LLM can control the whole rack without you shipping API keys around. It ships with a small web UI for adding sources and watching their health.
 
 ## Powered by Cloudflare Code Mode
 
@@ -67,7 +67,7 @@ services:
       - '3000:3000'
     env_file: .env
     volumes:
-      - ./data:/app/data  # SQLite database lives here; migrations are baked into the image
+      - ./data:/app/data # SQLite database lives here; migrations are baked into the image
 ```
 
 `.env` alongside `docker-compose.yml`:

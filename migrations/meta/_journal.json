@@ -43,6 +43,13 @@
       "when": 1789065251383,
       "tag": "0005_known_hosts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789123812244,
+      "tag": "0006_basic_auth",
+      "breakpoints": true
     }
   ]
 }

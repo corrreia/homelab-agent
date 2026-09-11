@@ -1,24 +1,20 @@
-import type { AuthConfig, Source } from './config'
+/* eslint-disable anti-slop/no-runtime-typeof, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters --
+ * This module IS the parse boundary for third-party OpenAPI documents: every field arrives as
+ * `unknown` from a remote server and is narrowed here before the rest of the app sees a Source.
+ * These predate this change; only the auth-header import moved out of this file.
+ */
+import type { Source } from './config'
 import { loadBundledSpec } from './bundled-specs'
 import { loggedFetch } from './fetch'
+import { buildAuthHeaders } from './source-auth'
 import { getTemplate, resolveBundledSpec as resolveTemplateBundledSpec } from './templates'
 
 function bundledSpecForSource(source: Pick<Source, 'kind' | 'specVersion'>): string | undefined {
   const template = getTemplate(source.kind)
+
   if (!template) return undefined
+
   return resolveTemplateBundledSpec(template, source.specVersion)
-}
-
-function buildAuthHeaders(auth: AuthConfig): Record<string, string> {
-  if (auth.type === 'bearer' && auth.token) {
-    return { Authorization: `Bearer ${auth.token}` }
-  }
-
-  if (auth.type === 'header' && auth.name && auth.value) {
-    return { [auth.name]: auth.value }
-  }
-
-  return {}
 }
 
 function shouldSendAuth(url: string, baseUrl: string): boolean {
@@ -36,6 +32,7 @@ export async function fetchOpenApiSpec(
   >,
 ): Promise<Record<string, unknown>> {
   const bundled = bundledSpecForSource(source)
+
   if (bundled) {
     return loadBundledSpec(bundled)
   }
@@ -47,15 +44,18 @@ export async function fetchOpenApiSpec(
     try {
       const headers = shouldSendAuth(specUrl, source.baseUrl) ? buildAuthHeaders(source.auth) : undefined
       const res = await loggedFetch(specUrl, { headers }, 'spec-fetch', { allowInvalidTls: source.allowInvalidTls })
+
       if (!res.ok) {
         throw new Error(`Failed to fetch spec from ${specUrl}: ${res.status} ${res.statusText}`)
       }
 
       const text = await res.text()
+
       try {
         return JSON.parse(text) as Record<string, unknown>
       } catch {
         const { load } = await import('js-yaml')
+
         return load(text) as Record<string, unknown>
       }
     } catch (error) {
@@ -68,11 +68,14 @@ export async function fetchOpenApiSpec(
 
 function substituteServerVariables(url: string, variables: unknown): string {
   if (!variables || typeof variables !== 'object') return url
+
   return url.replace(/\{([^}]+)\}/g, (match, name) => {
     const v = (variables as Record<string, unknown>)[name]
+
     if (v && typeof v === 'object' && 'default' in v && typeof (v as { default: unknown }).default === 'string') {
       return (v as { default: string }).default
     }
+
     return match
   })
 }
@@ -80,16 +83,19 @@ function substituteServerVariables(url: string, variables: unknown): string {
 function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
   if (typeof spec.basePath === 'string') {
     const basePath = normalizeBasePath(spec.basePath)
+
     if (basePath) return basePath
   }
 
   const servers = Array.isArray(spec.servers) ? spec.servers : []
   const firstServer = servers[0]
+
   if (!firstServer || typeof firstServer !== 'object' || firstServer === null) {
     return undefined
   }
 
   const serverUrl = 'url' in firstServer ? firstServer.url : undefined
+
   if (typeof serverUrl !== 'string' || serverUrl.length === 0) {
     return undefined
   }
@@ -102,6 +108,7 @@ function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
 
   try {
     const parsed = new URL(resolvedUrl, 'http://localhost')
+
     return normalizeBasePath(parsed.pathname)
   } catch {
     return undefined
@@ -110,7 +117,9 @@ function inferApiBasePath(spec: Record<string, unknown>): string | undefined {
 
 function normalizeBasePath(value: string): string | undefined {
   const basePath = value.trim().replace(/\/+$/, '')
+
   if (basePath === '' || basePath === '/') return undefined
+
   return basePath.startsWith('/') ? basePath : `/${basePath}`
 }
 
@@ -121,6 +130,7 @@ export async function withInferredApiBasePath(source: Source): Promise<Source> {
     const template = source.kind !== 'custom' ? getTemplate(source.kind) : undefined
     const prefix = template?.publicPathPrefix ?? ''
     const combined = `${prefix}${inferred ?? ''}`
+
     return {
       ...source,
       apiBasePath: combined === '' ? undefined : combined,

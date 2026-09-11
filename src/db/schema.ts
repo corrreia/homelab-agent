@@ -211,10 +211,13 @@ export const sources = sqliteTable('sources', {
   specUrl: text('spec_url'),
   fallbackSpecUrl: text('fallback_spec_url'),
   allowInvalidTls: integer('allow_invalid_tls', { mode: 'boolean' }).notNull().default(false),
-  authType: text('auth_type', { enum: ['bearer', 'header', 'none'] }).notNull(),
+  authType: text('auth_type', { enum: ['bearer', 'header', 'basic', 'none'] }).notNull(),
   authToken: text('auth_token'),
   authHeaderName: text('auth_header_name'),
   authHeaderValue: text('auth_header_value'),
+  /** `basic` auth. The username is not a secret; the password carries the same `v1:` envelope as every other credential. */
+  authUsername: text('auth_username'),
+  authPassword: text('auth_password'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),

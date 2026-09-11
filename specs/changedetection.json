@@ -1,0 +1,2201 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ChangeDetection.io API",
+    "description": "# ChangeDetection.io Web page monitoring and notifications API\n\nREST API for managing Page watches, Group tags, and Notifications.\n\nchangedetection.io can be driven by its built in simple API, in the examples below you will also find `curl` command line and `python` examples to help you get started faster.\n\n## Where to find my API key?\n\nThe API key can be easily found under the **SETTINGS** then **API** tab of changedetection.io dashboard.  \nSimply click the API key to automatically copy it to your clipboard.\n\n![Where to find the API key](./where-to-get-api-key.jpeg)\n\n## Connection URL\n\nThe API can be found at `/api/v1/`, so for example if you run changedetection.io locally on port 5000, then URL would be `http://localhost:5000/api/v1/watch/cc0cfffa-f449-477b-83ea-0caafd1dc091/history`.\n\nIf you are using the hosted/subscription version of changedetection.io, then the URL is based on your login URL, for example:  \n`https://<your login url>/api/v1/watch/cc0cfffa-f449-477b-83ea-0caafd1dc091/history`\n\n## Authentication\n\nAlmost all API requests require some authentication, this is provided as an **API Key** in the header of the HTTP request.\n\nFor example: `x-api-key: YOUR_API_KEY`\n",
+    "version": "0.1.9",
+    "contact": {
+      "name": "ChangeDetection.io",
+      "url": "https://github.com/dgtlmoon/changedetection.io"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Development server"
+    },
+    {
+      "url": "https://yourdomain.com/api/v1",
+      "description": "Production server"
+    },
+    {
+      "url": "{protocol}://{host}/api/v1",
+      "description": "Custom server",
+      "variables": {
+        "protocol": {
+          "enum": ["http", "https"],
+          "default": "https"
+        },
+        "host": {
+          "default": "yourdomain.com",
+          "description": "Your changedetection.io host"
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Watch Management",
+      "description": "Core functionality for managing web page monitors. Create, retrieve, update, and delete individual watches. \nEach watch represents a single URL being monitored for changes, with configurable settings for check intervals, \nnotification preferences, and content filtering options.\n"
+    },
+    {
+      "name": "Watch History",
+      "description": "Get a list of timestamps of all changes detected for a watch.\n"
+    },
+    {
+      "name": "Snapshots",
+      "description": "Retrieve individual text snapshot of monitored content according to the `timestamp`. The text snapshot is the HTML\nto Text at page check time. \n\nSet the query argument `html` to any value to retrieve the last HTML fetched, the system only keeps the last two \n(2) HTML files fetched.\n\nUse the Watch History API endpoint to get a list of timestamps to pass to this query.\n"
+    },
+    {
+      "name": "Favicon",
+      "description": "Retrieve favicon images associated with monitored web pages. These are used in the dashboard interface \nto visually identify different watches in your monitoring list.\n"
+    },
+    {
+      "name": "Group / Tag Management",
+      "description": "Organize your watches using tags and groups. Tags (also known as Groups) allow you to categorize monitors, set group-wide \nnotification preferences, and perform bulk operations like mass rechecking or status changes across \nmultiple related watches.\n"
+    },
+    {
+      "name": "Notifications",
+      "description": "Configure global notification endpoints that can be used across all your watches. Supports various \nnotification services including email, Discord, Slack, webhooks, and many other popular platforms. \nThese settings serve as defaults that can be overridden at the individual watch or tag level.\n\nThe notification syntax uses [https://github.com/caronc/apprise](https://github.com/caronc/apprise).\n"
+    },
+    {
+      "name": "Search",
+      "description": "Search and filter your watches by URL patterns, titles, or tags. Useful for quickly finding specific \nmonitors in large collections or identifying watches that match certain criteria.\n"
+    },
+    {
+      "name": "Import",
+      "description": "Bulk import multiple URLs for monitoring. Accepts plain text lists of URLs and can automatically \napply tags, proxy settings, and other configurations to all imported watches simultaneously.\n"
+    },
+    {
+      "name": "System Information",
+      "description": "Retrieve system status and statistics about your changedetection.io instance, including total watch\ncounts, uptime information, and version details.\n"
+    },
+    {
+      "name": "Plugin API Extensions",
+      "description": "## How Processor Plugins Extend the API\n\nchangedetection.io uses a **processor plugin** system to handle different types of change detection.\nEach processor lives in `changedetectionio/processors/<name>/` and may include an `api.yaml` file\nthat extends the core Watch schema with processor-specific configuration fields.\n\n### How it works\n\nAt startup, changedetection.io scans all installed processors for an `api.yaml` file. Any schemas\nand code samples defined there are deep-merged into the live API specification, making the\nprocessor's configuration fields valid on all watch create and update requests.\n\nThe live, fully-merged spec is always available at `/api/v1/full-spec` — use that URL with\nSwagger UI or Redoc to see the complete schema for your specific installation.\n\n---\n\n### Writing a processor `api.yaml`\n\nPlace an `api.yaml` in the processor plugin's own directory, alongside its `__init__.py`\n(e.g. `changedetectionio/processors/my_processor/api.yaml`). The schema name **must** follow the\nconvention `processor_config_<processor_name>` (e.g. `processor_config_restock_diff`). That same\nkey is used as the JSON field name when creating or updating a watch.\n\nA minimal `api.yaml` for a hypothetical `my_processor`:\n\n```yaml\ncomponents:\n  schemas:\n    processor_config_my_processor:\n      type: object\n      description: Configuration for my_processor\n      properties:\n        some_option:\n          type: boolean\n          default: true\n          description: Enable some behaviour\n\npaths:\n  /watch:\n    post:\n      x-code-samples:\n        - lang: curl\n          label: my_processor example\n          source: |\n            curl -X POST \"http://localhost:5000/api/v1/watch\" \\\n              -H \"x-api-key: YOUR_API_KEY\" \\\n              -H \"Content-Type: application/json\" \\\n              -d '{\n                \"url\": \"https://example.com\",\n                \"processor\": \"my_processor\",\n                \"processor_config_my_processor\": { \"some_option\": true }\n              }'\n```\n\nThe `paths` section in `api.yaml` is used only for injecting additional `x-code-samples` into\nexisting endpoints — you cannot define new routes via plugin.\n\n---\n\n### Built-in plugin: `restock_diff`\n\nThe `restock_diff` processor is always shipped with changedetection.io. It monitors product\navailability and price changes using structured data (JSON-LD / schema.org microdata) and\ntext heuristics. It is activated by setting `\"processor\": \"restock_diff\"` on a watch.\n\nIt adds the `processor_config_restock_diff` block to the Watch schema with these fields:\n\n| Field | Type | Default | Description |\n|---|---|---|---|\n| `in_stock_processing` | string | `in_stock_only` | `in_stock_only` — only alert Out-of-Stock→In-Stock · `all_changes` — alert any availability change · `off` — disable stock tracking |\n| `follow_price_changes` | boolean | `true` | Monitor and alert on price changes |\n| `price_change_min` | number\\|null | — | Alert when price drops **below** this value |\n| `price_change_max` | number\\|null | — | Alert when price rises **above** this value |\n| `price_change_threshold_percent` | number\\|null | — | Minimum % change since the original price to trigger an alert |\n\n#### CREATE — Add a restock/price monitor\n\n```bash\ncurl -X POST \"http://localhost:5000/api/v1/watch\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"url\": \"https://example.com/product/widget\",\n    \"processor\": \"restock_diff\",\n    \"processor_config_restock_diff\": {\n      \"in_stock_processing\": \"in_stock_only\",\n      \"follow_price_changes\": true,\n      \"price_change_threshold_percent\": 5\n    }\n  }'\n```\n\n#### READ — Retrieve the monitor\n\nThe response JSON includes `processor_config_restock_diff` alongside all standard watch fields:\n\n```bash\ncurl -X GET \"http://localhost:5000/api/v1/watch/cc0cfffa-f449-477b-83ea-0caafd1dc091\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n```\n\n```json\n{\n  \"uuid\": \"cc0cfffa-f449-477b-83ea-0caafd1dc091\",\n  \"url\": \"https://example.com/product/widget\",\n  \"processor\": \"restock_diff\",\n  \"processor_config_restock_diff\": {\n    \"in_stock_processing\": \"in_stock_only\",\n    \"follow_price_changes\": true,\n    \"price_change_threshold_percent\": 5,\n    \"price_change_min\": null,\n    \"price_change_max\": null\n  }\n}\n```\n\n#### UPDATE — Change thresholds without recreating the monitor\n\nOnly fields included in the request body are updated; omitted fields are left unchanged.\n\n```bash\ncurl -X PUT \"http://localhost:5000/api/v1/watch/cc0cfffa-f449-477b-83ea-0caafd1dc091\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"processor_config_restock_diff\": {\n      \"in_stock_processing\": \"all_changes\",\n      \"follow_price_changes\": true,\n      \"price_change_min\": 10.00,\n      \"price_change_max\": 500.00\n    }\n  }'\n```\n\n#### DELETE — Remove the monitor\n\n```bash\ncurl -X DELETE \"http://localhost:5000/api/v1/watch/cc0cfffa-f449-477b-83ea-0caafd1dc091\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n```\n\n---\n\nFor the complete schema-validated documentation including all processor fields, fetch the live spec\nand load it into Swagger UI or Redoc:\n\n```\nGET /api/v1/full-spec\n```\n"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API key for authentication. You can find your API key in the changedetection.io dashboard under Settings > API.\n\nEnter your API key in the \"Authorize\" button above to automatically populate all code examples.\n"
+      }
+    },
+    "schemas": {
+      "WatchBase": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier",
+            "readOnly": true
+          },
+          "date_created": {
+            "type": ["integer", "null"],
+            "description": "Unix timestamp of creation",
+            "readOnly": true
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to monitor for changes",
+            "maxLength": 5000
+          },
+          "link_to_open": {
+            "type": "string",
+            "description": "Optional human-facing URL to open instead of `url`. Use when `url` points at something\nthat is not meant to be read in a browser (an API endpoint or RSS feed, for example).\nAn empty string means \"use `url`\". Exposed rendered as `open_link`.\n",
+            "maxLength": 5000
+          },
+          "title": {
+            "type": ["string", "null"],
+            "description": "Custom title for the web page change monitor (watch), not to be confused with page_title",
+            "maxLength": 5000
+          },
+          "tag": {
+            "type": "string",
+            "deprecated": true,
+            "description": "**Deprecated - use `tags` instead.** Kept working for API v1 and may be removed in v2.\n\nTakes comma-separated tag *names* (not UUIDs, despite what earlier revisions of this\ndocument said). Names are matched case-insensitively against existing tags and created\nwhen they don't exist yet. An existing tag's UUID is also accepted and resolves to that\ntag; a UUID matching no tag is ignored.\n",
+            "maxLength": 5000,
+            "example": "Production, Price tracking"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of tag UUIDs. Unlike `tag`, these are applied exactly as given - no tag is ever\ncreated from this field. The UUIDs are not validated: an unknown one is stored but\nresolves to no group.\n"
+          },
+          "paused": {
+            "type": "boolean",
+            "description": "Whether the web page change monitor (watch) is paused"
+          },
+          "notification_muted": {
+            "type": "boolean",
+            "description": "Whether notifications are muted"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "DELETE", "PUT"],
+            "description": "HTTP method to use"
+          },
+          "fetch_backend": {
+            "type": "string",
+            "description": "Backend to use for fetching content. Common values:\n- `system` (default) - Use the system-wide default fetcher\n- `html_requests` - Fast requests-based fetcher\n- `html_webdriver` - Browser-based fetcher (Playwright/Puppeteer)\n- `extra_browser_*` - Custom browser configurations (if configured)\n- Plugin-provided fetchers (if installed)\n",
+            "pattern": "^(system|html_requests|html_webdriver|extra_browser_.+)$",
+            "default": "system"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "HTTP headers to include in requests"
+          },
+          "body": {
+            "type": ["string", "null"],
+            "description": "HTTP request body",
+            "maxLength": 5000
+          },
+          "proxy": {
+            "type": ["string", "null"],
+            "description": "Proxy configuration",
+            "maxLength": 5000
+          },
+          "ignore_status_codes": {
+            "type": ["boolean", "null"],
+            "description": "Ignore HTTP status code errors (boolean or null)"
+          },
+          "webdriver_delay": {
+            "type": ["integer", "null"],
+            "description": "Delay in seconds for webdriver"
+          },
+          "webdriver_js_execute_code": {
+            "type": ["string", "null"],
+            "description": "JavaScript code to execute",
+            "maxLength": 5000
+          },
+          "time_between_check": {
+            "type": "object",
+            "properties": {
+              "weeks": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 52000
+              },
+              "days": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 365000
+              },
+              "hours": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 8760000
+              },
+              "minutes": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 525600000
+              },
+              "seconds": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 31536000000
+              }
+            },
+            "description": "Time intervals between checks. All fields must be non-negative. At least one non-zero value required when not using default settings."
+          },
+          "time_between_check_use_default": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to use global settings for time between checks - defaults to true if not set"
+          },
+          "notification_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "maxItems": 100,
+            "description": "Notification URLs for this web page change monitor (watch). Maximum 100 URLs."
+          },
+          "notification_title": {
+            "type": ["string", "null"],
+            "description": "Custom notification title",
+            "maxLength": 5000
+          },
+          "notification_body": {
+            "type": ["string", "null"],
+            "description": "Custom notification body",
+            "maxLength": 5000
+          },
+          "notification_format": {
+            "type": "string",
+            "enum": ["text", "html", "htmlcolor", "markdown", "System default"],
+            "description": "Format for notifications"
+          },
+          "track_ldjson_price_data": {
+            "type": ["boolean", "null"],
+            "description": "Whether to track JSON-LD price data"
+          },
+          "browser_steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "type": ["string", "null"],
+                  "maxLength": 5000
+                },
+                "selector": {
+                  "type": ["string", "null"],
+                  "maxLength": 5000
+                },
+                "optional_value": {
+                  "type": ["string", "null"],
+                  "maxLength": 5000
+                }
+              },
+              "required": ["operation", "selector", "optional_value"],
+              "additionalProperties": false
+            },
+            "maxItems": 100,
+            "description": "Browser automation steps. Maximum 100 steps allowed."
+          },
+          "processor": {
+            "type": "string",
+            "enum": ["restock_diff", "text_json_diff"],
+            "default": "text_json_diff",
+            "description": "Optional processor mode to use for change detection. Defaults to `text_json_diff` if not specified."
+          },
+          "include_filters": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "maxItems": 100,
+            "description": "CSS/XPath selectors to extract specific content from the page"
+          },
+          "subtractive_selectors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "maxItems": 100,
+            "description": "CSS/XPath selectors to remove content from the page"
+          },
+          "ignore_text": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "maxItems": 100,
+            "description": "Text patterns to ignore in change detection"
+          },
+          "trigger_text": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "maxItems": 100,
+            "description": "Text/regex patterns that must be present to trigger a change"
+          },
+          "text_should_not_be_present": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "maxItems": 100,
+            "description": "Text that should NOT be present (triggers alert if found)"
+          },
+          "extract_lines_containing": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "maxItems": 100,
+            "description": "Keep only lines containing these substrings (plain text, case-insensitive) — simpler alternative to regex"
+          },
+          "extract_text": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "maxItems": 100,
+            "description": "Regex patterns to extract specific text after filtering"
+          },
+          "trim_text_whitespace": {
+            "type": "boolean",
+            "default": false,
+            "description": "Strip leading/trailing whitespace from text"
+          },
+          "sort_text_alphabetically": {
+            "type": "boolean",
+            "default": false,
+            "description": "Sort lines alphabetically before comparison"
+          },
+          "remove_duplicate_lines": {
+            "type": "boolean",
+            "default": false,
+            "description": "Remove duplicate lines from content"
+          },
+          "check_unique_lines": {
+            "type": "boolean",
+            "default": false,
+            "description": "Compare against all history for unique lines"
+          },
+          "strip_ignored_lines": {
+            "type": ["boolean", "null"],
+            "description": "Remove lines matching ignore patterns"
+          },
+          "filter_text_added": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include added text in change detection"
+          },
+          "filter_text_removed": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include removed text in change detection"
+          },
+          "filter_text_replaced": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include replaced text in change detection"
+          },
+          "in_stock_only": {
+            "type": "boolean",
+            "default": true,
+            "description": "Only trigger on in-stock transitions (restock_diff processor)"
+          },
+          "follow_price_changes": {
+            "type": "boolean",
+            "default": true,
+            "description": "Monitor and track price changes (restock_diff processor)"
+          },
+          "price_change_threshold_percent": {
+            "type": ["number", "null"],
+            "description": "Minimum price change percentage to trigger notification"
+          },
+          "has_ldjson_price_data": {
+            "type": ["boolean", "null"],
+            "description": "Whether page has LD-JSON price data (auto-detected)",
+            "readOnly": true
+          },
+          "notification_screenshot": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include screenshot in notifications (if supported by notification URL)"
+          },
+          "filter_failure_notification_send": {
+            "type": "boolean",
+            "default": true,
+            "description": "Send notification when filters fail to match content"
+          },
+          "use_page_title_in_list": {
+            "type": ["boolean", "null"],
+            "description": "Display page title in watch list (null = use system default)"
+          },
+          "history_snapshot_max_length": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Maximum number of history snapshots to keep (null = use system default)"
+          },
+          "time_schedule_limit": {
+            "type": "object",
+            "description": "Weekly schedule limiting when checks can run",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": false
+              },
+              "monday": {
+                "$ref": "#/components/schemas/DaySchedule"
+              },
+              "tuesday": {
+                "$ref": "#/components/schemas/DaySchedule"
+              },
+              "wednesday": {
+                "$ref": "#/components/schemas/DaySchedule"
+              },
+              "thursday": {
+                "$ref": "#/components/schemas/DaySchedule"
+              },
+              "friday": {
+                "$ref": "#/components/schemas/DaySchedule"
+              },
+              "saturday": {
+                "$ref": "#/components/schemas/DaySchedule"
+              },
+              "sunday": {
+                "$ref": "#/components/schemas/DaySchedule"
+              },
+              "timezone": {
+                "type": "string",
+                "nullable": true,
+                "description": "Optional IANA timezone name the schedule is evaluated in, e.g. \"America/Los_Angeles\". When empty or omitted, the global scheduler_timezone_default is used, falling back to $TZ then UTC. Must be a name recognised by the server's timezone database - an unknown value is rejected with HTTP 400, because the scheduler cannot resolve it and the watch would never be checked.",
+                "example": "America/Los_Angeles"
+              }
+            }
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "description": "Field to check (e.g., 'page_filtered_text', 'page_title')"
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Comparison operator (e.g., 'contains_regex', 'equals', 'not_equals')"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Value to compare against"
+                }
+              },
+              "required": ["field", "operator", "value"]
+            },
+            "maxItems": 100,
+            "description": "Array of condition rules for change detection logic (empty array when not set)"
+          },
+          "conditions_match_logic": {
+            "type": "string",
+            "enum": ["ALL", "ANY"],
+            "default": "ALL",
+            "description": "Logic operator - ALL (match all conditions) or ANY (match any condition)"
+          },
+          "llm_backend_profile": {
+            "type": ["boolean", "null"],
+            "default": true,
+            "description": "Whether AI/LLM features are enabled. On a watch this is a plain on/off (default true).\nOn a tag/group it is ternary and is that group's only AI control:\n- true: AI on for every watch in the group, and the group's `llm_intent` /\n  `llm_change_summary` are inherited by its watches (unless a watch sets its own)\n- false: AI off for every watch in the group\n- null (group default): the group has no say; each watch uses its own AI settings\n(Reserved for selecting a named LLM profile in future - currently a plain on/off.)\n"
+          },
+          "llm_intent": {
+            "type": "string",
+            "maxLength": 2000,
+            "default": "",
+            "description": "Plain-English intent for AI-based change filtering. The AI evaluates every detected change against this and only notifies when it matches."
+          },
+          "llm_change_summary": {
+            "type": "string",
+            "maxLength": 2000,
+            "default": "",
+            "description": "Instructions for the AI to summarise changes in notifications. When set, replaces {{diff}} with a human-readable description."
+          },
+          "llm_change_summary_mode": {
+            "type": "string",
+            "enum": ["replace", "append"],
+            "default": "replace",
+            "description": "Whether llm_change_summary replaces the prompt inherited from the tag/global settings, or is appended to the end of it."
+          },
+          "llm_prefilter": {
+            "type": ["string", "null"],
+            "readOnly": true,
+            "description": "CSS selector derived by the AI to narrow content scope before evaluation (auto-managed, do not set manually)."
+          },
+          "llm_evaluation_cache": {
+            "type": "object",
+            "readOnly": true,
+            "description": "Internal cache of AI evaluation results keyed by (intent, diff) hash (auto-managed)."
+          },
+          "llm_last_tokens_used": {
+            "type": ["integer", "null"],
+            "readOnly": true,
+            "description": "Number of tokens consumed by the AI on the most recent check."
+          },
+          "llm_tokens_used_cumulative": {
+            "type": ["integer", "null"],
+            "readOnly": true,
+            "description": "Total tokens consumed by the AI across all checks for this watch."
+          },
+          "llm_tokens_this_period": {
+            "type": ["integer", "null"],
+            "readOnly": true,
+            "description": "Tokens consumed by the AI on this watch within the current rollover period (currently month). Used to enforce max_tokens_per_count_period."
+          },
+          "llm_tokens_period_key": {
+            "type": ["string", "null"],
+            "readOnly": true,
+            "description": "Identifier of the current rollover period (e.g. \"2026-05\"). Set automatically; resets llm_tokens_this_period when the period changes."
+          }
+        }
+      },
+      "DaySchedule": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "start_time": {
+            "type": "string",
+            "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+            "default": "00:00",
+            "description": "Start time in HH:MM format"
+          },
+          "duration": {
+            "type": "object",
+            "properties": {
+              "hours": {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "default": "24"
+              },
+              "minutes": {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "default": "00"
+              }
+            }
+          }
+        }
+      },
+      "Watch": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WatchBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "last_checked": {
+                "type": "integer",
+                "description": "Unix timestamp of last check",
+                "readOnly": true
+              },
+              "last_changed": {
+                "type": "integer",
+                "description": "Unix timestamp of last change",
+                "readOnly": true,
+                "x-computed": true
+              },
+              "last_error": {
+                "type": ["string", "boolean", "null"],
+                "description": "Last error message (false when no error, string when error occurred, null if not checked yet)",
+                "readOnly": true
+              },
+              "last_viewed": {
+                "type": "integer",
+                "description": "Unix timestamp in seconds of the last time the watch was viewed. Setting it to a value higher than `last_changed` in the \"Update watch\" endpoint marks the watch as viewed.",
+                "minimum": 0
+              },
+              "link": {
+                "type": "string",
+                "format": "string",
+                "description": "The watch URL rendered in case of any Jinja2 markup, always use this for listing.",
+                "readOnly": true,
+                "x-computed": true
+              },
+              "open_link": {
+                "type": "string",
+                "format": "string",
+                "description": "The URL a human should be sent to - `link_to_open` when set, otherwise the same as `link`.",
+                "readOnly": true,
+                "x-computed": true
+              },
+              "page_title": {
+                "type": ["string", "null"],
+                "description": "HTML <title> tag extracted from the page",
+                "readOnly": true
+              },
+              "check_count": {
+                "type": "integer",
+                "description": "Total number of checks performed",
+                "readOnly": true
+              },
+              "fetch_time": {
+                "type": "number",
+                "description": "Duration of last fetch in seconds",
+                "readOnly": true
+              },
+              "previous_md5": {
+                "type": ["string", "boolean"],
+                "description": "MD5 hash of previous content (false if not set)",
+                "readOnly": true
+              },
+              "previous_md5_before_filters": {
+                "type": ["string", "boolean"],
+                "description": "MD5 hash before filters applied (false if not set)",
+                "readOnly": true
+              },
+              "consecutive_filter_failures": {
+                "type": "integer",
+                "description": "Counter for consecutive filter match failures",
+                "readOnly": true
+              },
+              "last_notification_error": {
+                "type": ["string", "null"],
+                "description": "Last notification error message",
+                "readOnly": true
+              },
+              "notification_alert_count": {
+                "type": "integer",
+                "description": "Number of notifications sent",
+                "readOnly": true
+              },
+              "content-type": {
+                "type": ["string", "null"],
+                "description": "Content-Type from last fetch",
+                "readOnly": true
+              },
+              "remote_server_reply": {
+                "type": ["string", "null"],
+                "description": "Server header from last response",
+                "readOnly": true
+              },
+              "browser_steps_last_error_step": {
+                "type": ["integer", "null"],
+                "description": "Last browser step that caused an error",
+                "readOnly": true
+              },
+              "viewed": {
+                "type": ["integer", "boolean"],
+                "description": "Computed property - true if watch has been viewed, false otherwise (deprecated, use last_viewed instead)",
+                "readOnly": true,
+                "x-computed": true
+              },
+              "history_n": {
+                "type": "integer",
+                "description": "Number of history snapshots available",
+                "readOnly": true,
+                "x-computed": true
+              },
+              "processor_config_restock_diff": {
+                "type": "object",
+                "readOnly": true,
+                "x-computed": true,
+                "description": "Resolved restock/price processor config for this watch.\nIf a tag with `overrides_watch: true` is assigned to this watch, the tag's config is\nreturned here instead of the watch's own config. Use `processor_config_restock_diff_source`\nto determine where the config originated.\n",
+                "properties": {
+                  "in_stock_processing": {
+                    "type": "string",
+                    "enum": ["in_stock_only", "all_changes", "off"]
+                  },
+                  "follow_price_changes": {
+                    "type": "boolean"
+                  },
+                  "price_change_min": {
+                    "type": ["number", "null"]
+                  },
+                  "price_change_max": {
+                    "type": ["number", "null"]
+                  },
+                  "price_change_threshold_percent": {
+                    "type": ["number", "null"],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              },
+              "processor_config_restock_diff_source": {
+                "type": "string",
+                "readOnly": true,
+                "x-computed": true,
+                "description": "Indicates the origin of `processor_config_restock_diff`.\n- `watch`: config comes from the watch itself\n- `tag:<uuid>`: config is overridden by the tag with the given UUID\n"
+              }
+            }
+          }
+        ]
+      },
+      "CreateWatch": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WatchBase"
+          },
+          {
+            "type": "object",
+            "required": ["url"]
+          }
+        ]
+      },
+      "UpdateWatch": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WatchBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "last_viewed": {
+                "type": "integer",
+                "description": "Unix timestamp in seconds of the last time the watch was viewed. Setting it to a value higher than `last_changed` in the \"Update watch\" endpoint marks the watch as viewed.",
+                "minimum": 0
+              }
+            }
+          }
+        ]
+      },
+      "Tag": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WatchBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "overrides_watch": {
+                "type": ["boolean", "null"],
+                "description": "Whether this tag's settings override watch settings for all watches in this tag/group.\n- true: Tag settings override watch settings\n- false: Tag settings do not override (watches use their own settings)\n- null: Not decided yet / inherit default behavior\n"
+              },
+              "url_match_pattern": {
+                "type": "string",
+                "description": "Automatically apply this tag to any watch whose URL matches this pattern.\nSupports fnmatch wildcards (* and ?): e.g. *://example.com/* or github.com/myorg.\nPlain strings are matched as case-insensitive substrings.\nLeave empty to disable auto-matching.\n"
+              },
+              "tag_colour": {
+                "type": "string",
+                "pattern": "^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))?$",
+                "description": "Background colour for this tag's badge, as a hex colour (#rgb or #rrggbb), e.g. #4f8ef7.\nOnly hex colours are accepted - the value is rendered into a CSS stylesheet.\nLeave empty to use the colour auto-generated from the tag name.\n"
+              }
+            }
+          }
+        ]
+      },
+      "CreateTag": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Tag"
+          },
+          {
+            "type": "object",
+            "required": ["title"]
+          }
+        ]
+      },
+      "NotificationUrls": {
+        "type": "object",
+        "properties": {
+          "notification_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "List of notification URLs"
+          }
+        },
+        "required": ["notification_urls"]
+      },
+      "SystemInfo": {
+        "type": "object",
+        "properties": {
+          "watch_count": {
+            "type": "integer",
+            "description": "Total number of web page change monitors (watches)"
+          },
+          "tag_count": {
+            "type": "integer",
+            "description": "Total number of tags"
+          },
+          "uptime": {
+            "type": "string",
+            "description": "System uptime"
+          },
+          "version": {
+            "type": "string",
+            "description": "Application version"
+          }
+        }
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "watches": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Watch"
+            },
+            "description": "Dictionary of matching web page change monitors (watches) keyed by UUID"
+          }
+        }
+      },
+      "WatchHistory": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string",
+          "description": "Path to snapshot file"
+        },
+        "description": "Dictionary of timestamps and snapshot paths"
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/watch": {
+      "get": {
+        "operationId": "listWatches",
+        "tags": ["Watch Management"],
+        "summary": "List all watches",
+        "description": "Return concise list of available web page change monitors (watches) and basic info",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/watch\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nresponse = requests.get('http://localhost:5000/api/v1/watch', headers=headers)\nprint(response.json())\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recheck_all",
+            "in": "query",
+            "description": "Set to 1 to force recheck of all watches",
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "description": "Tag name to filter results",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of watches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/Watch"
+                  }
+                },
+                "example": {
+                  "095be615-a8ad-4c33-8e9c-c7612fbf6c9f": {
+                    "uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+                    "url": "http://example.com?id={{1+1}} - the raw URL",
+                    "link": "http://example.com?id=2 - the rendered URL, always use this for listing.",
+                    "title": "Example Website Monitor - manually entered title/description",
+                    "page_title": "The HTML <title> from the page",
+                    "tags": ["550e8400-e29b-41d4-a716-446655440000"],
+                    "paused": false,
+                    "notification_muted": false,
+                    "method": "GET",
+                    "fetch_backend": "html_requests",
+                    "last_checked": 1640995200,
+                    "last_changed": 1640995200
+                  },
+                  "7c9e6b8d-f2a1-4e5c-9d3b-8a7f6e4c2d1a": {
+                    "uuid": "7c9e6b8d-f2a1-4e5c-9d3b-8a7f6e4c2d1a",
+                    "url": "http://example.com?id={{1+1}} - the raw URL",
+                    "link": "http://example.com?id=2 - the rendered URL, always use this for listing.",
+                    "title": "News Site Tracker - manually entered title/description",
+                    "page_title": "The HTML <title> from the page",
+                    "tags": ["330e8400-e29b-41d4-a716-446655440001"],
+                    "paused": false,
+                    "notification_muted": true,
+                    "method": "GET",
+                    "fetch_backend": "html_webdriver",
+                    "last_checked": 1640998800,
+                    "last_changed": 1640995200
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWatch",
+        "tags": ["Watch Management"],
+        "summary": "Create a new watch",
+        "description": "Create a single web page change monitor (watch). Requires at least `url` to be set.\n\nEvery watch can be configured with:\n- **Processor mode**: `processor` field (`restock_diff` or `text_json_diff` - default)\n- **Notification settings**: `notification_urls` (array), `notification_title`, `notification_body`, `notification_format`, `notification_muted`\n- **Tags/Groups**: `tag` (UUID string) or `tags` (array of UUIDs)\n- **Check settings**: `time_between_check`, `paused`, `method`, `fetch_backend`\n- **Advanced options**: `headers`, `body`, `proxy`, `browser_steps`, and more\n",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X POST \"http://localhost:5000/api/v1/watch\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"url\": \"https://example.com\",\n    \"title\": \"Example Site Monitor\",\n    \"time_between_check\": {\n      \"hours\": 1\n    }\n  }'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\nimport json\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n}\ndata = {\n    'url': 'https://example.com',\n    'title': 'Example Site Monitor',\n    'time_between_check': {\n        'hours': 1\n    }\n}\nresponse = requests.post('http://localhost:5000/api/v1/watch',\n                       headers=headers, json=data)\nprint(response.text)\n"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWatch"
+              },
+              "example": {
+                "url": "https://example.com",
+                "title": "Example Site Monitor",
+                "time_between_check": {
+                  "hours": 1
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Web page change monitor (watch) created successfully",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "OK"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Watch limit reached (server has `PAGE_WATCH_LIMIT` set; unlimited by default).\nNo watch was created - delete one to make room.\n",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "Watch limit reached (50/50 watches). Cannot add more watches."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/watch/{uuid}": {
+      "get": {
+        "operationId": "getWatch",
+        "tags": ["Watch Management"],
+        "summary": "Get single watch",
+        "description": "Retrieve web page change monitor (watch) information and set muted/paused status. Returns the FULL Watch JSON.",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\nresponse = requests.get(f'http://localhost:5000/api/v1/watch/{uuid}', headers=headers)\nprint(response.json())\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "recheck",
+            "in": "query",
+            "description": "Recheck this web page change monitor (watch)",
+            "schema": {
+              "type": "string",
+              "enum": ["1", "true"]
+            }
+          },
+          {
+            "name": "paused",
+            "in": "query",
+            "description": "Set pause state",
+            "schema": {
+              "type": "string",
+              "enum": ["paused", "unpaused"]
+            }
+          },
+          {
+            "name": "muted",
+            "in": "query",
+            "description": "Set mute state",
+            "schema": {
+              "type": "string",
+              "enum": ["muted", "unmuted"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Watch information or operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Watch"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "OK"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Web page change monitor (watch) not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateWatch",
+        "tags": ["Watch Management"],
+        "summary": "Update watch",
+        "description": "Update an existing web page change monitor (watch) using JSON. Accepts the same structure as returned in [get single watch information](#operation/getWatch).",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X PUT \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"url\": \"https://updated-example.com\",\n    \"title\": \"Updated Monitor\",\n    \"paused\": false\n  }'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\ndata = {\n    'url': 'https://updated-example.com',\n    'title': 'Updated Monitor',\n    'paused': False\n}\nresponse = requests.put(f'http://localhost:5000/api/v1/watch/{uuid}', \n                      headers=headers, json=data)\nprint(response.text)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Web page change monitor (watch) updated successfully",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "OK"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWatch",
+        "tags": ["Watch Management"],
+        "summary": "Delete watch",
+        "description": "Delete a web page change monitor (watch) and all related history",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X DELETE \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\nresponse = requests.delete(f'http://localhost:5000/api/v1/watch/{uuid}', headers=headers)\nprint(response.text)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Web page change monitor (watch) deleted successfully",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "OK"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/watch/{uuid}/history": {
+      "get": {
+        "operationId": "getWatchHistory",
+        "tags": ["Watch History"],
+        "summary": "Get watch history",
+        "description": "Get a list of all historical snapshots available for a web page change monitor (watch), use the key `timestamp`\nas the query argument for fetching a single watch history snapshot.\n",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/history\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\nresponse = requests.get(f'http://localhost:5000/api/v1/watch/{uuid}/history', headers=headers)\nprint(response.json())\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of available snapshots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchHistory"
+                },
+                "example": {
+                  "1640995200": "/path/to/snapshot1.txt",
+                  "1640998800": "/path/to/snapshot2.txt"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Web page change monitor (watch) not found"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWatchHistory",
+        "tags": ["Watch History"],
+        "summary": "Delete watch history",
+        "description": "Delete/clear all historical snapshots for a web page change monitor (watch), the watch itself is kept.\nThis also resets the \"last checked\"/\"last changed\" state, so the watch will be re-checked on the next cycle.\n",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X DELETE \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/history\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\nresponse = requests.delete(f'http://localhost:5000/api/v1/watch/{uuid}/history', headers=headers)\nprint(response.status_code)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "History deleted successfully"
+          },
+          "404": {
+            "description": "Web page change monitor (watch) not found"
+          }
+        }
+      }
+    },
+    "/watch/{uuid}/history/{timestamp}": {
+      "get": {
+        "operationId": "getWatchSnapshot",
+        "tags": ["Snapshots"],
+        "summary": "Get single snapshot",
+        "description": "Get single snapshot from web page change monitor (watch). Use 'latest' for the most recent snapshot.\nUse the Watch History API to get a list of timestamps to pass.\n",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/history/latest\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\ntimestamp = 'latest'  # or use specific timestamp like 1640995200\nresponse = requests.get(f'http://localhost:5000/api/v1/watch/{uuid}/history/{timestamp}', headers=headers)\nprint(response.text)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "timestamp",
+            "in": "path",
+            "required": true,
+            "description": "Snapshot timestamp or 'latest'",
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string",
+                  "enum": ["latest"]
+                }
+              ]
+            }
+          },
+          {
+            "name": "html",
+            "in": "query",
+            "description": "Set to 1 to return the last HTML",
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot content",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Snapshot not found"
+          }
+        }
+      }
+    },
+    "/watch/{uuid}/difference/{from_timestamp}/{to_timestamp}": {
+      "get": {
+        "operationId": "getWatchHistoryDiff",
+        "tags": ["Watch History"],
+        "summary": "Get the difference between two snapshots",
+        "description": "Generate a difference (comparison) between two historical snapshots of a web page change monitor (watch).\n\nThis endpoint compares content between two points in time and returns the differences in your chosen format.\nPerfect for reviewing what changed between specific versions or comparing recent changes.\n\n**Timestamp Keywords:**\n- Use `'latest'` for the most recent snapshot (to_timestamp)\n- Use `'previous'` for the second-most-recent snapshot (from_timestamp)\n- Or use specific Unix timestamps from the watch history\n\n**Format Options:**\n- `text` (default): Plain text with (removed) and (added) prefixes\n- `html`: HTML format with (removed) and (added) text\n- `htmlcolor`: Rich HTML with colored highlights (green for additions, red for deletions)\n\n**Word-Level Diffing:**\n- Enable word-level granularity with `word_diff=true` for detailed inline comparisons\n- Disable with `word_diff=false` for line-level comparisons only (default false/off, line-level mode by default)\n\n**Raw Diff Output:**\n- Use `no_markup=true` to get raw diff content without any formatting applied\n- Returns content with placeholders for opening/closing tags of changes\n- Allows you to implement your own custom colorisation or formatting\n- Skips all HTML color application and service tweaks (added text, html color tags, etc)\n",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "# Compare previous snapshot to latest with colored HTML\ncurl -X GET \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/difference/previous/latest?format=htmlcolor\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n\n# Compare two specific timestamps in plain text with word-level diff\ncurl -X GET \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/difference/1640995200/1640998800?format=text&word_diff=true\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n\n# Show only additions (hide removed/replaced content), ignore whitespace\ncurl -X GET \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/difference/previous/latest?format=htmlcolor&removed=false&replaced=false&ignoreWhitespace=true\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\n\n# Compare previous to latest with colored HTML output\nresponse = requests.get(\n    f'http://localhost:5000/api/v1/watch/{uuid}/difference/previous/latest',\n    headers=headers,\n    params={'format': 'htmlcolor'}\n)\nprint(response.text)\n\n# Compare specific timestamps with word-level diff\nfrom_ts = '1640995200'\nto_ts = '1640998800'\nresponse = requests.get(\n    f'http://localhost:5000/api/v1/watch/{uuid}/difference/{from_ts}/{to_ts}',\n    headers=headers,\n    params={'format': 'text', 'word_diff': 'true'}\n)\nprint(response.text)\n\n# Show only additions, ignore whitespace and use word-level diff\nresponse = requests.get(\n    f'http://localhost:5000/api/v1/watch/{uuid}/difference/previous/latest',\n    headers=headers,\n    params={\n        'format': 'htmlcolor',\n        'type': 'diffWords',\n        'removed': 'false',\n        'replaced': 'false',\n        'ignoreWhitespace': 'true'\n    }\n)\nprint(response.text)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from_timestamp",
+            "in": "path",
+            "required": true,
+            "description": "Starting snapshot timestamp, 'previous' for second-most-recent, or specific Unix timestamp",
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "description": "Unix timestamp of the starting snapshot"
+                },
+                {
+                  "type": "string",
+                  "enum": ["previous"],
+                  "description": "Use 'previous' to automatically select the second-most-recent snapshot"
+                }
+              ]
+            },
+            "example": "previous"
+          },
+          {
+            "name": "to_timestamp",
+            "in": "path",
+            "required": true,
+            "description": "Ending snapshot timestamp, 'latest' for most recent, or specific Unix timestamp",
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "description": "Unix timestamp of the ending snapshot"
+                },
+                {
+                  "type": "string",
+                  "enum": ["latest"],
+                  "description": "Use 'latest' to automatically select the most recent snapshot"
+                }
+              ]
+            },
+            "example": "latest"
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "Output format for the diff:\n- `text` (default): Plain text with (removed) and (added) prefixes\n- `html`: Basic HTML format\n- `htmlcolor`: Rich HTML with colored backgrounds (red for deletions, green for additions)\n- `markdown`: Markdown format with HTML rendering\n",
+            "schema": {
+              "type": "string",
+              "enum": ["text", "html", "htmlcolor", "markdown"],
+              "default": "text"
+            }
+          },
+          {
+            "name": "word_diff",
+            "in": "query",
+            "description": "Enable word-level diffing for more granular comparisons.\nWhen enabled, changes are highlighted at the word level rather than line level.\nDefault is false (line-level mode).\nAccepts: true, false, 1, 0, yes, no, on, off\n",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", "1", "0", "yes", "no", "on", "off"],
+              "default": "false"
+            }
+          },
+          {
+            "name": "no_markup",
+            "in": "query",
+            "description": "When set to true, returns the raw diff content without any markup formatting.\nThe content will include placeholders for opening/closing tags of the changes,\nallowing you to implement your own custom colorisation or formatting.\nThis skips all HTML color application and service tweaks.\nAccepts: true, false, 1, 0, yes, no, on, off\n",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", "1", "0", "yes", "no", "on", "off"],
+              "default": "false"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Diff granularity type:\n- `diffLines` (default): Line-level comparison, showing which lines changed\n- `diffWords`: Word-level comparison, showing which words changed within lines\n\nThis parameter is an alternative to `word_diff` for better alignment with the UI.\nIf both are specified, `type=diffWords` will enable word-level diffing.\n",
+            "schema": {
+              "type": "string",
+              "enum": ["diffLines", "diffWords"],
+              "default": "diffLines"
+            }
+          },
+          {
+            "name": "changesOnly",
+            "in": "query",
+            "description": "When enabled, only show lines/content that changed (no surrounding context).\nWhen disabled, include unchanged lines for context around changes.\nAccepts: true, false, 1, 0, yes, no, on, off\n",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", "1", "0", "yes", "no", "on", "off"],
+              "default": "true"
+            }
+          },
+          {
+            "name": "ignoreWhitespace",
+            "in": "query",
+            "description": "When enabled, ignore whitespace-only changes (spaces, tabs, newlines).\nUseful for focusing on content changes and ignoring formatting differences.\nAccepts: true, false, 1, 0, yes, no, on, off\n",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", "1", "0", "yes", "no", "on", "off"],
+              "default": "false"
+            }
+          },
+          {
+            "name": "removed",
+            "in": "query",
+            "description": "Include removed/deleted content in the diff output.\nWhen disabled, content that was deleted will not appear in the diff.\nAccepts: true, false, 1, 0, yes, no, on, off\n",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", "1", "0", "yes", "no", "on", "off"],
+              "default": "true"
+            }
+          },
+          {
+            "name": "added",
+            "in": "query",
+            "description": "Include added/new content in the diff output.\nWhen disabled, content that was added will not appear in the diff.\nAccepts: true, false, 1, 0, yes, no, on, off\n",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", "1", "0", "yes", "no", "on", "off"],
+              "default": "true"
+            }
+          },
+          {
+            "name": "replaced",
+            "in": "query",
+            "description": "Include replaced/modified content in the diff output.\nWhen disabled, content that was modified (changed from one value to another) will not appear in the diff.\nAccepts: true, false, 1, 0, yes, no, on, off\n",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false", "1", "0", "yes", "no", "on", "off"],
+              "default": "true"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Formatted diff between the two snapshots",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "description": "Plain text diff with change markers"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string",
+                  "description": "HTML formatted diff with styling"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid format parameter or invalid request"
+          },
+          "404": {
+            "description": "Watch not found, timestamps not found, or insufficient history"
+          }
+        }
+      }
+    },
+    "/watch/{uuid}/favicon": {
+      "get": {
+        "operationId": "getWatchFavicon",
+        "tags": ["Favicon"],
+        "summary": "Get watch favicon",
+        "description": "Get the favicon for a web page change monitor (watch) as displayed in the watch overview list.",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/favicon\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  --output favicon.ico\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nuuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'\nresponse = requests.get(f'http://localhost:5000/api/v1/watch/{uuid}/favicon', headers=headers)\nwith open('favicon.ico', 'wb') as f:\n    f.write(response.content)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Web page change monitor (watch) unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favicon binary data",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Favicon not found"
+          }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "operationId": "listTags",
+        "tags": ["Group / Tag Management"],
+        "summary": "List all tags",
+        "description": "Return list of available tags/groups",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/tags\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nresponse = requests.get('http://localhost:5000/api/v1/tags', headers=headers)\nprint(response.json())\n"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/Tag"
+                  }
+                },
+                "example": {
+                  "550e8400-e29b-41d4-a716-446655440000": {
+                    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+                    "title": "Production Sites",
+                    "notification_urls": ["mailto:admin@example.com"],
+                    "notification_muted": false
+                  },
+                  "330e8400-e29b-41d4-a716-446655440001": {
+                    "uuid": "330e8400-e29b-41d4-a716-446655440001",
+                    "title": "News Sources",
+                    "notification_urls": ["discord://webhook_id/webhook_token"],
+                    "notification_muted": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tag": {
+      "post": {
+        "operationId": "createTag",
+        "tags": ["Group / Tag Management"],
+        "summary": "Create tag",
+        "description": "Create a single tag/group",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X POST \"http://localhost:5000/api/v1/tag\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"title\": \"Important Sites\"\n  }'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n}\ndata = {'title': 'Important Sites'}\nresponse = requests.post('http://localhost:5000/api/v1/tag',\n                       headers=headers, json=data)\nprint(response.json())\n"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTag"
+              },
+              "example": {
+                "title": "Important Sites"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tag created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "uuid": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "UUID of the created tag"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or unsupported tag"
+          }
+        }
+      }
+    },
+    "/tag/{uuid}": {
+      "get": {
+        "operationId": "getTag",
+        "tags": ["Group / Tag Management"],
+        "summary": "Get single tag",
+        "description": "Retrieve tag information, set notification_muted status, recheck all web page change monitors (watches) in tag.",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\ntag_uuid = '550e8400-e29b-41d4-a716-446655440000'\nresponse = requests.get(f'http://localhost:5000/api/v1/tag/{tag_uuid}', headers=headers)\nprint(response.json())\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Tag unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "muted",
+            "in": "query",
+            "description": "Set mute state",
+            "schema": {
+              "type": "string",
+              "enum": ["muted", "unmuted"]
+            }
+          },
+          {
+            "name": "recheck",
+            "in": "query",
+            "description": "Queue all web page change monitors (watches) with this tag for recheck",
+            "schema": {
+              "type": "string",
+              "enum": ["true"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag information or operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "OK"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag not found"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateTag",
+        "tags": ["Group / Tag Management"],
+        "summary": "Update tag",
+        "description": "Update an existing tag using JSON",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X PUT \"http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"title\": \"Updated Production Sites\",\n    \"notification_muted\": false\n  }'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n}\ntag_uuid = '550e8400-e29b-41d4-a716-446655440000'\ndata = {\n    'title': 'Updated Production Sites',\n    'notification_muted': False\n}\nresponse = requests.put(f'http://localhost:5000/api/v1/tag/{tag_uuid}', \n                      headers=headers, json=data)\nprint(response.text)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Tag unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Tag"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tag updated successfully"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteTag",
+        "tags": ["Group / Tag Management"],
+        "summary": "Delete tag",
+        "description": "Delete a tag/group and remove it from all web page change monitors (watches)",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X DELETE \"http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\ntag_uuid = '550e8400-e29b-41d4-a716-446655440000'\nresponse = requests.delete(f'http://localhost:5000/api/v1/tag/{tag_uuid}', headers=headers)\nprint(response.text)\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "description": "Tag unique ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag deleted successfully"
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "getNotifications",
+        "tags": ["Notifications"],
+        "summary": "Get notification URLs",
+        "description": "Return the notification URL list from the configuration",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/notifications\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nresponse = requests.get('http://localhost:5000/api/v1/notifications', headers=headers)\nprint(response.json())\n"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notification URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationUrls"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "addNotifications",
+        "tags": ["Notifications"],
+        "summary": "Add notification URLs",
+        "description": "Add one or more notification URLs to the configuration",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X POST \"http://localhost:5000/api/v1/notifications\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"notification_urls\": [\n      \"mailto:admin@example.com\",\n      \"discord://webhook_id/webhook_token\"\n    ]\n  }'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n}\ndata = {\n    'notification_urls': [\n        'mailto:admin@example.com',\n        'discord://webhook_id/webhook_token'\n    ]\n}\nresponse = requests.post('http://localhost:5000/api/v1/notifications', \n                       headers=headers, json=data)\nprint(response.json())\n"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationUrls"
+              },
+              "example": {
+                "notification_urls": ["mailto:admin@example.com", "discord://webhook_id/webhook_token"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Notification URLs added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationUrls"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      },
+      "put": {
+        "operationId": "replaceNotifications",
+        "tags": ["Notifications"],
+        "summary": "Replace notification URLs",
+        "description": "Replace all notification URLs with the provided list (can be empty)",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X PUT \"http://localhost:5000/api/v1/notifications\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"notification_urls\": [\n      \"mailto:newadmin@example.com\"\n    ]\n  }'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n}\ndata = {\n    'notification_urls': [\n        'mailto:newadmin@example.com'\n    ]\n}\nresponse = requests.put('http://localhost:5000/api/v1/notifications', \n                      headers=headers, json=data)\nprint(response.json())\n"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationUrls"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Notification URLs replaced successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationUrls"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteNotifications",
+        "tags": ["Notifications"],
+        "summary": "Delete notification URLs",
+        "description": "Delete one or more notification URLs from the configuration",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X DELETE \"http://localhost:5000/api/v1/notifications\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"notification_urls\": [\n      \"mailto:admin@example.com\"\n    ]\n  }'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'application/json'\n}\ndata = {\n    'notification_urls': [\n        'mailto:admin@example.com'\n    ]\n}\nresponse = requests.delete('http://localhost:5000/api/v1/notifications', \n                         headers=headers, json=data)\nprint(response.status_code)\n"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationUrls"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Notification URLs deleted successfully"
+          },
+          "400": {
+            "description": "No matching notification URLs found"
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "searchWatches",
+        "tags": ["Search"],
+        "summary": "Search watches",
+        "description": "Search web page change monitors (watches) by URL or title text",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/search?q=example.com\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nparams = {'q': 'example.com'}\nresponse = requests.get('http://localhost:5000/api/v1/search', \n                      headers=headers, params=params)\nprint(response.json())\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query to match against watch URLs and titles",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "description": "Tag name to limit results (name not UUID)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "partial",
+            "in": "query",
+            "description": "Allow partial matching of URL query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                },
+                "example": {
+                  "watches": {
+                    "095be615-a8ad-4c33-8e9c-c7612fbf6c9f": {
+                      "uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+                      "url": "http://example.com",
+                      "title": "Example Website Monitor",
+                      "tags": ["550e8400-e29b-41d4-a716-446655440000"],
+                      "paused": false,
+                      "notification_muted": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/import": {
+      "post": {
+        "operationId": "importWatches",
+        "tags": ["Import"],
+        "summary": "Import watch URLs with configuration",
+        "description": "Import a list of URLs to monitor with optional watch configuration. Accepts line-separated URLs in request body.\n\n**Configuration via Query Parameters:**\n\nYou can pass ANY watch configuration field as query parameters to apply settings to all imported watches.\nAll parameters from the Watch schema are supported (processor, fetch_backend, notification_urls, etc.).\n\n**Special Parameters:**\n- `tag` / `tag_uuids` - Assign tags to imported watches\n- `proxy` - Use specific proxy for imported watches\n- `dedupe` - Skip duplicate URLs (default: true)\n\n**Type Conversion:**\n- Booleans: `true`, `false`, `1`, `0`, `yes`, `no`\n- Arrays: Comma-separated or JSON format (`[item1,item2]`)\n- Objects: JSON format (`{\"key\":\"value\"}`)\n- Numbers: Parsed as int or float\n",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "# Basic import\ncurl -X POST \"http://localhost:5000/api/v1/import\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: text/plain\" \\\n  -d $'https://example.com\\nhttps://example.org\\nhttps://example.net'\n\n# Import with processor and fetch backend\ncurl -X POST \"http://localhost:5000/api/v1/import?processor=restock_diff&fetch_backend=html_webdriver\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: text/plain\" \\\n  -d $'https://example.com\\nhttps://example.org'\n\n# Import with multiple settings\ncurl -X POST \"http://localhost:5000/api/v1/import?processor=restock_diff&paused=true&tag=production\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Content-Type: text/plain\" \\\n  -d $'https://example.com'\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {\n    'x-api-key': 'YOUR_API_KEY',\n    'Content-Type': 'text/plain'\n}\n\n# Basic import\nurls = 'https://example.com\\nhttps://example.org\\nhttps://example.net'\nresponse = requests.post('http://localhost:5000/api/v1/import',\n                       headers=headers, data=urls)\nprint(response.json())\n\n# Import with configuration\nparams = {\n    'processor': 'restock_diff',\n    'fetch_backend': 'html_webdriver',\n    'paused': 'false',\n    'tag': 'production'\n}\nresponse = requests.post('http://localhost:5000/api/v1/import',\n                       headers=headers, params=params, data=urls)\nprint(response.json())\n"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_uuids",
+            "in": "query",
+            "description": "Tag UUID(s) to apply to imported watches (comma-separated for multiple)",
+            "schema": {
+              "type": "string"
+            },
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "description": "Tag name to apply to imported watches",
+            "schema": {
+              "type": "string"
+            },
+            "example": "production"
+          },
+          {
+            "name": "proxy",
+            "in": "query",
+            "description": "Proxy key to use for imported watches",
+            "schema": {
+              "type": "string"
+            },
+            "example": "proxy1"
+          },
+          {
+            "name": "dedupe",
+            "in": "query",
+            "description": "Skip duplicate URLs (default true)",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "https://example.com\nhttps://example.org\nhttps://example.net\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URLs imported successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "description": "List of created watch UUIDs"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Watch limit reached (server has `PAGE_WATCH_LIMIT` set; unlimited by default).\nThe batch is rejected whole - no watches are created - so the same request can be\nretried unchanged once there is room.\n",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "Watch limit reached (48/50 watches), importing 5 URL(s) would exceed it. No watches were imported."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/systeminfo": {
+      "get": {
+        "operationId": "getSystemInfo",
+        "tags": ["System Information"],
+        "summary": "Get system information",
+        "description": "Return information about the current system state",
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "curl -X GET \"http://localhost:5000/api/v1/systeminfo\" \\\n  -H \"x-api-key: YOUR_API_KEY\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\nheaders = {'x-api-key': 'YOUR_API_KEY'}\nresponse = requests.get('http://localhost:5000/api/v1/systeminfo', headers=headers)\nprint(response.json())\n"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "System information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                },
+                "example": {
+                  "watch_count": 42,
+                  "tag_count": 5,
+                  "uptime": "2 days, 3:45:12",
+                  "version": "0.50.10"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/full-spec": {
+      "get": {
+        "operationId": "getFullApiSpec",
+        "tags": ["Plugin API Extensions"],
+        "summary": "Get full live API spec",
+        "description": "Return the fully merged OpenAPI specification for this instance.\n\nUnlike the static `api-spec.yaml` shipped with the application, this endpoint returns the\nspec dynamically merged with any `api.yaml` schemas provided by installed processor plugins.\n\n**Use this URL** with Swagger UI or Redoc to get schema-accurate documentation for your\nspecific install — it includes every `processor_config_<name>` schema block contributed by\ninstalled processors (e.g. `processor_config_restock_diff` from the built-in restock plugin).\n\nThis endpoint requires no authentication and returns YAML.\n\nTo load it directly in Swagger UI, paste the URL into the \"Explore\" box:\n```\nhttp://localhost:5000/api/v1/full-spec\n```\n",
+        "security": [],
+        "x-code-samples": [
+          {
+            "lang": "curl",
+            "source": "# Fetch the live merged spec (no API key needed)\ncurl -X GET \"http://localhost:5000/api/v1/full-spec\"\n"
+          },
+          {
+            "lang": "Python",
+            "source": "import requests\n\n# No authentication required\nresponse = requests.get('http://localhost:5000/api/v1/full-spec')\nprint(response.text)  # Returns YAML\n"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Merged OpenAPI specification in YAML format. Includes all processor plugin schemas\n(e.g. `processor_config_restock_diff`) not present in the static `api-spec.yaml`.\n",
+            "content": {
+              "application/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

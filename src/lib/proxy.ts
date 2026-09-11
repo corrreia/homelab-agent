@@ -1,27 +1,17 @@
 import type { Source } from './config'
 import { loggedFetch } from './fetch'
+import { buildAuthHeaders } from './source-auth'
 
 export function getSourceBasePath(source: Source): string {
   if (source.apiBasePath) return source.apiBasePath
-  if (source.slug === 'seerr') return '/api/v1'
-  if (source.slug === 'portainer') return '/api'
-  if (source.slug === 'bazarr') return '/api'
-  return ''
-}
 
-function getAuthHeaders(source: Source): Record<string, string> {
-  switch (source.auth.type) {
-    case 'bearer':
-      return { Authorization: `Bearer ${source.auth.token}` }
-    case 'header':
-      if (source.auth.name && source.auth.value) {
-        return { [source.auth.name]: source.auth.value }
-      }
-      return {}
-    case 'none':
-    default:
-      return {}
-  }
+  if (source.slug === 'seerr') return '/api/v1'
+
+  if (source.slug === 'portainer') return '/api'
+
+  if (source.slug === 'bazarr') return '/api'
+
+  return ''
 }
 
 export async function proxyRequest(source: Source, path: string, request: Request): Promise<Response> {
@@ -33,15 +23,18 @@ export async function proxyRequest(source: Source, path: string, request: Reques
     url.searchParams.set(key, value)
   })
 
-  const authHeaders = getAuthHeaders(source)
+  const authHeaders = buildAuthHeaders(source.auth)
 
   // Forward relevant headers, add auth
   const headers = new Headers()
   const forwardHeaders = ['content-type', 'accept', 'user-agent']
+
   for (const name of forwardHeaders) {
     const value = request.headers.get(name)
+
     if (value) headers.set(name, value)
   }
+
   for (const [name, value] of Object.entries(authHeaders)) {
     headers.set(name, value)
   }
@@ -60,6 +53,7 @@ export async function proxyRequest(source: Source, path: string, request: Reques
   )
 
   const nullBody = res.status === 204 || res.status === 205 || res.status === 304
+
   return new Response(nullBody ? null : res.body, {
     status: res.status,
     statusText: res.statusText,
@@ -86,5 +80,6 @@ function filterResponseHeaders(headers: Headers): Headers {
       out.set(name, value)
     }
   })
+
   return out
 }

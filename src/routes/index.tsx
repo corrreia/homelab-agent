@@ -26,7 +26,7 @@ import {
   sourceExists,
 } from '../lib/sources-repo'
 import { testHostConnection } from '../lib/ssh'
-import { templates, type ServiceTemplate } from '../lib/templates'
+import { templateAuth, templates, type ServiceTemplate } from '../lib/templates'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../lib/test-connection'
 import { colors, fonts } from '../styles'
 
@@ -90,13 +90,25 @@ const testHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { d
 })
 
 const testConnection = createServerFn({ method: 'POST' }).handler(
-  async ({ data }: { data: { templateId: string; baseUrl: string; token: string; allowInvalidTls?: boolean } }) => {
+  async ({
+    data,
+  }: {
+    data: { templateId: string; baseUrl: string; token: string; username?: string; allowInvalidTls?: boolean }
+  }) => {
     await requireCurrentSession()
     const template = templates.find((t) => t.id === data.templateId)
 
     if (!template) throw new Error('Unknown template')
 
-    return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token, data.allowInvalidTls))
+    // `token` doubles as the password for basic auth — the form collects one secret either way.
+    return testServiceConnection(
+      templateTestRequest(
+        template,
+        data.baseUrl,
+        { token: data.token, username: data.username, password: data.token },
+        data.allowInvalidTls,
+      ),
+    )
   },
 )
 
@@ -387,6 +399,7 @@ function TemplateForm({
 }) {
   const [baseUrl, setBaseUrl] = useState('')
   const [token, setToken] = useState('')
+  const [username, setUsername] = useState('')
   const [slug, setSlug] = useState(() => suggestSlug(template.defaultSlug, existingSlugs))
   const [selectedVersion, setSelectedVersion] = useState(template.specVersions?.[0]?.value ?? '')
   const [allowInvalidTls, setAllowInvalidTls] = useState(false)
@@ -401,7 +414,7 @@ function TemplateForm({
 
     try {
       const result = await testConnection({
-        data: { templateId: template.id, baseUrl: baseUrl.replace(/\/+$/, ''), token, allowInvalidTls },
+        data: { templateId: template.id, baseUrl: baseUrl.replace(/\/+$/, ''), token, username, allowInvalidTls },
       })
 
       setTestResult(result)
@@ -430,16 +443,7 @@ function TemplateForm({
       specVersion: template.specVersions ? selectedVersion : undefined,
       baseUrl: cleanBase,
       allowInvalidTls,
-      auth:
-        template.authType === 'bearer'
-          ? { type: 'bearer', token }
-          : template.authType === 'header'
-            ? {
-                type: 'header',
-                name: template.authHeaderName!,
-                value: template.authHeaderName === 'Authorization' ? `Token ${token}` : token,
-              }
-            : { type: 'none' },
+      auth: templateAuth(template, { token, username, password: token }),
     }
 
     try {
@@ -496,6 +500,19 @@ function TemplateForm({
             style={inputStyle}
           />
         </FormField>
+
+        {template.authType === 'basic' && (
+          <FormField label="Username" required>
+            <input
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value)
+                setTestResult(null)
+              }}
+              style={inputStyle}
+            />
+          </FormField>
+        )}
 
         {template.authType !== 'none' && (
           <FormField label={template.tokenLabel} required>
@@ -601,12 +618,14 @@ function ManualForm({
   const [specUrl, setSpecUrl] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [allowInvalidTls, setAllowInvalidTls] = useState(false)
-  const [authType, setAuthType] = useState<'none' | 'bearer' | 'header'>('none')
-  // SAFETY: the <option> elements rendered below are exactly these three values.
+  const [authType, setAuthType] = useState<'none' | 'bearer' | 'header' | 'basic'>('none')
+  // SAFETY: the <option> elements rendered below are exactly these four values.
   const selectAuthType = (value: string) => setAuthType(value as typeof authType)
   const [token, setToken] = useState('')
   const [headerName, setHeaderName] = useState('')
   const [headerValue, setHeaderValue] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -630,7 +649,9 @@ function ManualForm({
           ? { type: 'bearer', token }
           : authType === 'header'
             ? { type: 'header', name: headerName, value: headerValue }
-            : { type: 'none' },
+            : authType === 'basic'
+              ? { type: 'basic', username, password }
+              : { type: 'none' },
     }
 
     try {
@@ -710,6 +731,7 @@ function ManualForm({
             <option value="none">None</option>
             <option value="bearer">Bearer Token</option>
             <option value="header">Custom Header</option>
+            <option value="basic">Basic Auth</option>
           </select>
         </FormField>
         {authType === 'bearer' && (
@@ -726,6 +748,21 @@ function ManualForm({
               <input
                 value={headerValue}
                 onChange={(e) => setHeaderValue(e.target.value)}
+                type="password"
+                style={inputStyle}
+              />
+            </FormField>
+          </>
+        )}
+        {authType === 'basic' && (
+          <>
+            <FormField label="Username" required>
+              <input value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
+            </FormField>
+            <FormField label="Password" required>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 style={inputStyle}
               />

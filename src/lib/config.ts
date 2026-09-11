@@ -1,8 +1,11 @@
 export interface AuthConfig {
-  type: 'bearer' | 'header' | 'none'
+  type: 'bearer' | 'header' | 'basic' | 'none'
   token?: string
   name?: string
   value?: string
+  /** `basic` only: sent as `Authorization: Basic base64(username:password)`. */
+  username?: string
+  password?: string
 }
 
 export interface Source {

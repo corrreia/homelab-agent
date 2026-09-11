@@ -1,6 +1,7 @@
 import type { AuthConfig } from './config'
-import type { ServiceTemplate } from './templates'
 import { loggedFetch } from './fetch'
+import { buildAuthHeaders } from './source-auth'
+import { templateAuth, type ServiceTemplate, type TemplateCredentials } from './templates'
 
 export interface TestResult {
   ok: boolean
@@ -19,12 +20,7 @@ export interface TestRequest {
 export async function testServiceConnection(req: TestRequest): Promise<TestResult> {
   const url = `${req.baseUrl.replace(/\/+$/, '')}${req.prefix ?? ''}${req.testPath}`
 
-  const headers: Record<string, string> = {}
-  if (req.auth.type === 'bearer' && req.auth.token) {
-    headers['Authorization'] = `Bearer ${req.auth.token}`
-  } else if (req.auth.type === 'header' && req.auth.name && req.auth.value) {
-    headers[req.auth.name] = req.auth.value
-  }
+  const headers = buildAuthHeaders(req.auth)
 
   try {
     const res = await loggedFetch(
@@ -49,15 +45,19 @@ export async function testServiceConnection(req: TestRequest): Promise<TestResul
     return { ok: false, status: res.status, message: `Server returned ${res.status} ${res.statusText}` }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
+
     if (msg.includes('timeout') || msg.includes('abort')) {
       return { ok: false, message: 'Connection timed out — check the URL' }
     }
+
     if (msg.includes('ERR_TLS_CERT_ALTNAME_INVALID') || msg.includes('certificate') || msg.includes('self-signed')) {
       return { ok: false, message: 'TLS certificate does not match this hostname' }
     }
+
     if (msg.includes('ECONNREFUSED') || msg.includes('fetch failed')) {
       return { ok: false, message: 'Connection refused — is the service running?' }
     }
+
     return { ok: false, message: `Connection error: ${msg}` }
   }
 }
@@ -66,19 +66,14 @@ export async function testServiceConnection(req: TestRequest): Promise<TestResul
 export function templateTestRequest(
   template: ServiceTemplate,
   baseUrl: string,
-  token: string,
+  creds: TemplateCredentials,
   allowInvalidTls?: boolean,
 ): TestRequest {
-  const prefix = template.publicPathPrefix ?? ''
-  const auth: AuthConfig =
-    template.authType === 'bearer'
-      ? { type: 'bearer', token }
-      : template.authType === 'header' && template.authHeaderName
-        ? {
-            type: 'header',
-            name: template.authHeaderName,
-            value: template.authHeaderName === 'Authorization' ? `Token ${token}` : token,
-          }
-        : { type: 'none' }
-  return { baseUrl, testPath: template.testEndpoint, auth, prefix, allowInvalidTls }
+  return {
+    baseUrl,
+    testPath: template.testEndpoint,
+    auth: templateAuth(template, creds),
+    prefix: template.publicPathPrefix ?? '',
+    allowInvalidTls,
+  }
 }

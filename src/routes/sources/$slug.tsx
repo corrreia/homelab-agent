@@ -11,11 +11,12 @@ import {
   updateSourcePreservingSecret as repoUpdateSource,
 } from '../../lib/sources-repo'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../../lib/test-connection'
-import { templates, type ServiceTemplate } from '../../lib/templates'
+import { templateAuth, templates, type ServiceTemplate } from '../../lib/templates'
 import { colors, fonts } from '../../styles'
 
 const getSource = createServerFn({ method: 'GET' }).handler(async ({ data }: { data: { slug: string } }) => {
   await requireCurrentSession()
+
   return repoGetPublicSource(data.slug)
 })
 
@@ -23,12 +24,14 @@ const updateSource = createServerFn({ method: 'POST' }).handler(
   async ({ data }: { data: { slug: string; source: Source } }) => {
     await requireCurrentSession()
     await repoUpdateSource(data.slug, data.source)
+
     return { ok: true }
   },
 )
 
 const listHostOptions = createServerFn({ method: 'GET' }).handler(async () => {
   await requireCurrentSession()
+
   return (await listHosts()).map((h) => ({ slug: h.slug, label: h.label }))
 })
 
@@ -36,16 +39,30 @@ const linkSourceHost = createServerFn({ method: 'POST' }).handler(
   async ({ data }: { data: { slug: string; hostSlug: string | null } }) => {
     await requireCurrentSession()
     await repoSetSourceHost(data.slug, data.hostSlug)
+
     return { ok: true }
   },
 )
 
 const testTemplateConnection = createServerFn({ method: 'POST' }).handler(
-  async ({ data }: { data: { templateId: string; baseUrl: string; token: string; allowInvalidTls?: boolean } }) => {
+  async ({
+    data,
+  }: {
+    data: { templateId: string; baseUrl: string; token: string; username?: string; allowInvalidTls?: boolean }
+  }) => {
     await requireCurrentSession()
     const template = templates.find((t) => t.id === data.templateId)
+
     if (!template) throw new Error('Unknown template')
-    return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token, data.allowInvalidTls))
+
+    return testServiceConnection(
+      templateTestRequest(
+        template,
+        data.baseUrl,
+        { token: data.token, username: data.username, password: data.token },
+        data.allowInvalidTls,
+      ),
+    )
   },
 )
 
@@ -66,6 +83,7 @@ function EditSourcePage() {
   const onSaved = () => navigate({ to: '/' })
 
   const template = source.kind === 'custom' ? undefined : templates.find((t) => t.id === source.kind)
+
   if (source.kind !== 'custom' && !template) {
     return (
       <p style={{ color: colors.error }}>
@@ -146,6 +164,8 @@ function EditTemplateSource({
   const [slug, setSlug] = useState(source.slug)
   const [baseUrl, setBaseUrl] = useState(source.baseUrl)
   const [token, setToken] = useState('')
+  // `basic` keeps the username visible (it is not a secret); a blank password keeps the stored one.
+  const [username, setUsername] = useState(source.auth.type === 'basic' ? (source.auth.name ?? '') : '')
   const [selectedVersion, setSelectedVersion] = useState(source.specVersion ?? template.specVersions?.[0]?.value ?? '')
   const [allowInvalidTls, setAllowInvalidTls] = useState(source.allowInvalidTls ?? false)
   const [error, setError] = useState('')
@@ -156,14 +176,17 @@ function EditTemplateSource({
     if (!baseUrl) return
     setTesting(true)
     setTestResult(null)
+
     try {
       const result = await testTemplateConnection({
-        data: { templateId: template.id, baseUrl: baseUrl.replace(/\/+$/, ''), token, allowInvalidTls },
+        data: { templateId: template.id, baseUrl: baseUrl.replace(/\/+$/, ''), token, username, allowInvalidTls },
       })
+
       setTestResult(result)
     } catch {
       setTestResult({ ok: false, message: 'Test failed unexpectedly' })
     }
+
     setTesting(false)
   }
 
@@ -171,23 +194,17 @@ function EditTemplateSource({
     e.preventDefault()
     setError('')
     const cleanBase = baseUrl.replace(/\/+$/, '')
+
     const updated: Source = {
       slug,
       kind: source.kind,
       baseUrl: cleanBase,
       specVersion: template.specVersions ? selectedVersion : undefined,
       allowInvalidTls,
-      auth:
-        template.authType === 'bearer'
-          ? { type: 'bearer', token: token || undefined }
-          : template.authType === 'header'
-            ? {
-                type: 'header',
-                name: template.authHeaderName!,
-                value: token ? (template.authHeaderName === 'Authorization' ? `Token ${token}` : token) : undefined,
-              }
-            : { type: 'none' },
+      // Blank secrets stay undefined here so resolveAuthForUpdate keeps what is already stored.
+      auth: templateAuth(template, { token, username, password: token }),
     }
+
     try {
       await updateSource({ data: { slug: source.slug, source: updated } })
       onSaved()
@@ -242,6 +259,20 @@ function EditTemplateSource({
             style={inputStyle}
           />
         </FormField>
+
+        {template.authType === 'basic' && (
+          <FormField label="Username" required>
+            <input
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value)
+                setTestResult(null)
+              }}
+              required
+              style={inputStyle}
+            />
+          </FormField>
+        )}
 
         {template.authType !== 'none' && (
           <FormField label={template.tokenLabel} required={!source.auth.hasSecret}>
@@ -334,13 +365,18 @@ function EditCustomSource({ source, onSaved }: { source: PublicSource; onSaved: 
   const [baseUrl, setBaseUrl] = useState(source.baseUrl)
   const [allowInvalidTls, setAllowInvalidTls] = useState(source.allowInvalidTls ?? false)
   const [authType, setAuthType] = useState(source.auth.type)
+  // SAFETY: the <option> elements rendered below are exactly the AuthConfig['type'] values.
+  const selectAuthType = (value: string) => setAuthType(value as typeof authType)
   const [token, setToken] = useState('')
   const [headerName, setHeaderName] = useState(source.auth.name ?? '')
+  // For basic auth the public source carries the username in `name`; the password never leaves the server.
+  const [username, setUsername] = useState(source.auth.type === 'basic' ? (source.auth.name ?? '') : '')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
     const updated: Source = {
       slug,
       kind: 'custom',
@@ -353,8 +389,11 @@ function EditCustomSource({ source, onSaved }: { source: PublicSource; onSaved: 
           ? { type: 'bearer', token: token || undefined }
           : authType === 'header'
             ? { type: 'header', name: headerName, value: token || undefined }
-            : { type: 'none' },
+            : authType === 'basic'
+              ? { type: 'basic', username, password: token || undefined }
+              : { type: 'none' },
     }
+
     try {
       await updateSource({ data: { slug: source.slug, source: updated } })
       onSaved()
@@ -421,10 +460,11 @@ function EditCustomSource({ source, onSaved }: { source: PublicSource; onSaved: 
           </label>
         </div>
         <FormField label="Auth Type">
-          <select value={authType} onChange={(e) => setAuthType(e.target.value as typeof authType)} style={inputStyle}>
+          <select value={authType} onChange={(e) => selectAuthType(e.target.value)} style={inputStyle}>
             <option value="none">None</option>
             <option value="bearer">Bearer Token</option>
             <option value="header">Custom Header</option>
+            <option value="basic">Basic Auth</option>
           </select>
         </FormField>
         {authType === 'bearer' && (
@@ -445,6 +485,23 @@ function EditCustomSource({ source, onSaved }: { source: PublicSource; onSaved: 
               <input value={headerName} onChange={(e) => setHeaderName(e.target.value)} required style={inputStyle} />
             </FormField>
             <FormField label="Header Value" required={!source.auth.hasSecret}>
+              <input
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                type="password"
+                placeholder={source.auth.hasSecret ? 'Leave blank to keep existing' : ''}
+                required={!source.auth.hasSecret}
+                style={inputStyle}
+              />
+            </FormField>
+          </>
+        )}
+        {authType === 'basic' && (
+          <>
+            <FormField label="Username">
+              <input value={username} onChange={(e) => setUsername(e.target.value)} required style={inputStyle} />
+            </FormField>
+            <FormField label="Password" required={!source.auth.hasSecret}>
               <input
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
