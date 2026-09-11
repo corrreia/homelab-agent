@@ -18,7 +18,7 @@ export const authDisabled = process.env.DANGEROUSLY_DISABLE_AUTH === 'true'
 if (authDisabled) {
   console.warn(
     '\n[auth] ⚠️  WARNING: DANGEROUSLY_DISABLE_AUTH=true — AUTHENTICATION IS OFF. THIS IS HIGHLY NOT ADVISED.\n' +
-      '[auth] Anyone who can reach this server can use every source and run commands on every SSH host.\n' +
+      '[auth] Anyone who can reach this server can use every source.\n' +
       '[auth] Use it only for local prototyping and never expose this instance to a network.\n',
   )
 } else if (!OIDC_ISSUER || !OIDC_CLIENT_ID || !OIDC_CLIENT_SECRET) {

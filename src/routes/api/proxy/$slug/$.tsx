@@ -9,10 +9,17 @@ export const Route = createFileRoute('/api/proxy/$slug/$')({
       ANY: async ({ request, params }) => {
         await requireApiSession(request)
         const source = await getSource(params.slug)
+
         if (!source) {
           return Response.json({ error: `Unknown source: ${params.slug}` }, { status: 404 })
         }
+
+        if (source.enabled !== true) {
+          return Response.json({ error: `Service "${params.slug}" is turned off` }, { status: 403 })
+        }
+
         const path = '/' + (params._splat ?? '')
+
         return proxyRequest(source, path, request)
       },
     },

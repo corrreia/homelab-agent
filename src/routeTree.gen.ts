@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as HostsRouteImport } from './routes/hosts'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ApiSpecRouteImport } from './routes/api/spec'
@@ -21,11 +20,6 @@ import { Route as ApiProxySlugSplatRouteImport } from './routes/api/proxy/$slug/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HostsRoute = HostsRouteImport.update({
-  id: '/hosts',
-  path: '/hosts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -61,7 +55,6 @@ const ApiProxySlugSplatRoute = ApiProxySlugSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/hosts': typeof HostsRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/api/spec': typeof ApiSpecRoute
@@ -71,7 +64,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/hosts': typeof HostsRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/api/spec': typeof ApiSpecRoute
@@ -82,7 +74,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/hosts': typeof HostsRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/api/spec': typeof ApiSpecRoute
@@ -92,13 +83,26 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/hosts' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/mcp'
+    | '/api/spec'
+    | '/sources/$slug'
+    | '/api/auth/$'
+    | '/api/proxy/$slug/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/hosts' | '/login' | '/mcp' | '/api/spec' | '/sources/$slug' | '/api/auth/$' | '/api/proxy/$slug/$'
+  to:
+    | '/'
+    | '/login'
+    | '/mcp'
+    | '/api/spec'
+    | '/sources/$slug'
+    | '/api/auth/$'
+    | '/api/proxy/$slug/$'
   id:
     | '__root__'
     | '/'
-    | '/hosts'
     | '/login'
     | '/mcp'
     | '/api/spec'
@@ -109,7 +113,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  HostsRoute: typeof HostsRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   ApiSpecRoute: typeof ApiSpecRoute
@@ -125,13 +128,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hosts': {
-      id: '/hosts'
-      path: '/hosts'
-      fullPath: '/hosts'
-      preLoaderRoute: typeof HostsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -181,7 +177,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  HostsRoute: HostsRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   ApiSpecRoute: ApiSpecRoute,
@@ -189,7 +184,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiProxySlugSplatRoute: ApiProxySlugSplatRoute,
 }
-export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
 import type { createStart } from '@tanstack/react-start'

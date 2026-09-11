@@ -21,7 +21,7 @@ export interface Source {
   baseUrl: string
   apiBasePath?: string
   allowInvalidTls?: boolean
-  /** Optional: slug of the SSH host this service runs on. */
-  hostSlug?: string | null
+  /** Whether the agent may use this service (the home-page toggle). The repo sets it on every row it returns. */
+  enabled?: boolean
   auth: AuthConfig
 }

@@ -1,3 +1,6 @@
+/* eslint-disable anti-slop/no-known-value-widening, anti-slop/no-unknown-returns, anti-slop/no-runtime-typeof, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unsafe-dictionary-type --
+ * These predate the anti-slop lint and are left for when this module is next reworked.
+ */
 import { openApiMcpServer } from '@cloudflare/codemode/mcp'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { RequestOptions } from '@cloudflare/codemode/mcp'
@@ -9,8 +12,6 @@ import { getSourceBasePath } from './proxy'
 import { getSource, getSources } from './sources-repo'
 import { loggedFetch } from './fetch'
 import { confirmWrite, emitProgress, isMutatingMethod, type McpRequestContext } from './mcp-elicitation'
-import { registerRemoteTools } from './mcp-remote-tools'
-import { registerHostTools } from './mcp-host-tools'
 
 function getAuthHeaders(source: Source): Record<string, string> {
   switch (source.auth.type) {
@@ -20,6 +21,7 @@ function getAuthHeaders(source: Source): Record<string, string> {
       if (source.auth.name && source.auth.value) {
         return { [source.auth.name]: source.auth.value }
       }
+
       return {}
     case 'none':
     default:
@@ -38,8 +40,16 @@ async function makeRequest(
   const restPath = '/' + pathParts.slice(1).join('/')
 
   const source = await getSource(slug!)
+
   if (!source) {
     throw new Error(`Unknown source: ${slug}`)
+  }
+
+  // Turned off on the home page: already out of the merged spec, and refused here even on a hand-built path.
+  if (source.enabled !== true) {
+    throw new Error(
+      `Service "${source.slug}" is turned off for the agent. The user can turn it back on in the homelab-agent UI.`,
+    )
   }
 
   // Heartbeat for clients that asked for progress (no-op otherwise).
@@ -55,6 +65,7 @@ async function makeRequest(
       supportsElicitation(),
       (message) => console.warn(`[mcp] ${message}`),
     )
+
     if (!approved) {
       throw new Error(`Write to "${source.slug}" was not approved (${options.method} ${restPath})`)
     }
@@ -62,6 +73,7 @@ async function makeRequest(
 
   const baseUrl = source.baseUrl.replace(/\/+$/, '')
   const url = new URL(`${baseUrl}${getSourceBasePath(source)}${restPath}`)
+
   if (options.query) {
     for (const [k, v] of Object.entries(options.query)) {
       if (v !== undefined) url.searchParams.set(k, String(v))
@@ -71,13 +83,16 @@ async function makeRequest(
   const headers: Record<string, string> = {
     ...getAuthHeaders(source),
   }
+
   let body: BodyInit | undefined
+
   if (options.body !== undefined) {
     if (options.rawBody) {
       body =
         typeof options.body === 'string' || options.body instanceof ArrayBuffer || ArrayBuffer.isView(options.body)
           ? (options.body as BodyInit)
           : String(options.body)
+
       if (options.contentType) {
         headers['Content-Type'] = options.contentType
       }
@@ -99,21 +114,26 @@ async function makeRequest(
   )
 
   const contentType = res.headers.get('content-type') ?? ''
+
   if (contentType.includes('application/json')) {
     return res.json()
   }
+
   return res.text()
 }
 
 export async function ensureMergedSpec(): Promise<ReturnType<typeof getCachedMergedSpec>> {
   let merged = getCachedMergedSpec()
+
   if (!merged) {
     const port = Number(process.env.PORT ?? 3000)
     const proxyBaseUrl = `http://localhost:${port}`
-    const sources = await getSources()
+    // Services turned off on the home page never reach the agent.
+    const sources = (await getSources()).filter((s) => s.enabled === true)
     merged = await mergeSpecs(sources, proxyBaseUrl)
     setCachedMergedSpec(merged)
   }
+
   return merged
 }
 
@@ -134,12 +154,8 @@ export async function buildMcpServer(): Promise<McpServer> {
     version: '0.1.0',
     description: 'Combined API gateway exposing multiple OpenAPI services',
   })
-  serverHolder.current = server
 
-  // Remote SSH toolkit (remote-bash/read/write/edit/glob/grep) alongside search/execute.
-  registerRemoteTools(server, supportsElicitation)
-  // Host management (host-list/add/remove) so the model can maintain its own host list.
-  registerHostTools(server)
+  serverHolder.current = server
 
   return server
 }

@@ -12,12 +12,10 @@ const MCP_PATH = '/mcp'
 export function McpBar({
   sourceCount,
   pathCount,
-  hostCount,
   errors,
 }: {
   sourceCount: number
   pathCount: number
-  hostCount: number
   errors: Array<{ slug: string; error: string }>
 }) {
   const [origin, setOrigin] = useState('')
@@ -50,7 +48,6 @@ export function McpBar({
     >
       <Count value={sourceCount} singular="source" plural="sources" />
       <Count value={pathCount} singular="endpoint" plural="endpoints" />
-      <Count value={hostCount} singular="host" plural="hosts" />
       {errors.length > 0 && (
         <span
           title={errors.map((e) => `${e.slug}: ${e.error}`).join('\n')}

@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
-import { sqliteTable, text, integer, index, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
@@ -203,14 +203,14 @@ export const sources = sqliteTable('sources', {
   slug: text('slug').primaryKey(),
   /** Either a known template id (e.g. 'jellyfin') or 'custom' */
   kind: text('kind').notNull().default('custom'),
-  /** Optional: the SSH host this service runs on. */
-  hostSlug: text('host_slug').references((): AnySQLiteColumn => hosts.slug, { onDelete: 'set null' }),
   baseUrl: text('base_url').notNull(),
   apiBasePath: text('api_base_path'),
   specVersion: text('spec_version'),
   specUrl: text('spec_url'),
   fallbackSpecUrl: text('fallback_spec_url'),
   allowInvalidTls: integer('allow_invalid_tls', { mode: 'boolean' }).notNull().default(false),
+  /** Whether the agent may use this service (the home-page toggle). Off keeps it out of search/execute. */
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   authType: text('auth_type', { enum: ['bearer', 'header', 'basic', 'none'] }).notNull(),
   authToken: text('auth_token'),
   authHeaderName: text('auth_header_name'),
@@ -225,60 +225,3 @@ export const sources = sqliteTable('sources', {
     .notNull()
     .$defaultFn(() => new Date()),
 })
-
-/** SSH hosts the agent can reach. They all authenticate with the shared agent identity key. */
-export const hosts = sqliteTable('hosts', {
-  slug: text('slug').primaryKey(),
-  label: text('label').notNull(),
-  hostname: text('hostname').notNull(),
-  port: integer('port').notNull().default(22),
-  username: text('username').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-})
-
-/**
- * Server host keys pinned trust-on-first-use, keyed by `hostname:port` rather than by host row
- * so that removing and re-adding a host (which the model can do unattended) cannot silently
- * accept a new key. Only a human clears a pin, from the /hosts UI.
- */
-export const knownHosts = sqliteTable('known_hosts', {
-  endpoint: text('endpoint').primaryKey(),
-  hostKey: text('host_key').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-})
-
-/**
- * Singleton (id = 'default') holding the agent's SSH identity. `privateKey` is stored with
- * the same AES-GCM envelope as source creds (see src/lib/encryption.ts) and must never be
- * logged or returned by any endpoint.
- */
-export const agentIdentity = sqliteTable('agent_identity', {
-  id: text('id').primaryKey(),
-  privateKey: text('private_key').notNull(),
-  publicKey: text('public_key').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-})
-
-/** A source (service) optionally runs on a host — the core homelab relation. */
-export const hostsRelations = relations(hosts, ({ many }) => ({
-  sources: many(sources),
-}))
-
-export const sourcesRelations = relations(sources, ({ one }) => ({
-  host: one(hosts, {
-    fields: [sources.hostSlug],
-    references: [hosts.slug],
-  }),
-}))

@@ -73,13 +73,13 @@ function rowToSource(row: Row): Source {
   return {
     slug: row.slug,
     kind: row.kind,
-    hostSlug: row.hostSlug ?? undefined,
     baseUrl: row.baseUrl,
     apiBasePath: row.apiBasePath ?? undefined,
     specVersion: row.specVersion ?? undefined,
     specUrl: row.specUrl ?? undefined,
     fallbackSpecUrl: row.fallbackSpecUrl ?? undefined,
     allowInvalidTls: row.allowInvalidTls,
+    enabled: row.enabled,
     auth: rowToAuth(row),
   }
 }
@@ -148,7 +148,6 @@ function sourceToInsert(s: Source): Insert {
   return {
     slug: s.slug,
     kind: s.kind,
-    hostSlug: s.hostSlug ?? null,
     baseUrl: s.baseUrl,
     apiBasePath: s.apiBasePath ?? null,
     specVersion: isCustom ? null : (s.specVersion ?? null),
@@ -162,11 +161,6 @@ function sourceToInsert(s: Source): Insert {
     authUsername: s.auth.type === 'basic' ? (s.auth.username ?? null) : null,
     authPassword: s.auth.type === 'basic' ? encryptNullable(s.auth.password ?? null) : null,
   }
-}
-
-/** Link (or unlink) the SSH host a source runs on. Does not affect the merged spec. */
-export async function setSourceHost(slug: string, hostSlug: string | null): Promise<void> {
-  db.update(sources).set({ hostSlug, updatedAt: new Date() }).where(eq(sources.slug, slug)).run()
 }
 
 export async function getSources(): Promise<Source[]> {
@@ -240,8 +234,7 @@ function resolveAuthForUpdate(existing: AuthConfig, next: AuthConfig): AuthConfi
 export async function updateSource(slug: string, source: Source): Promise<Source> {
   validateSource({ ...source, slug })
   const enriched = await withInferredApiBasePath({ ...source, slug })
-  // hostSlug is owned by setSourceHost; never clobber the host link on a source-form save.
-  const { slug: _omit, hostSlug: _keepHostLink, ...rest } = sourceToInsert(enriched)
+  const { slug: _omit, ...rest } = sourceToInsert(enriched)
   db.update(sources)
     .set({ ...rest, updatedAt: new Date() })
     .where(eq(sources.slug, slug))
@@ -264,6 +257,15 @@ export async function updateSourcePreservingSecret(slug: string, source: Source)
 
 export async function deleteSource(slug: string): Promise<void> {
   db.delete(sources).where(eq(sources.slug, slug)).run()
+  invalidateMergedSpecCache()
+}
+
+/**
+ * Turn the agent's access to a service on or off. Human-only (the home-page toggle); there is no
+ * MCP path here. Off drops the service from the merged spec, so search/execute can't see it.
+ */
+export async function setSourceEnabled(slug: string, enabled: boolean): Promise<void> {
+  db.update(sources).set({ enabled, updatedAt: new Date() }).where(eq(sources.slug, slug)).run()
   invalidateMergedSpecCache()
 }
 

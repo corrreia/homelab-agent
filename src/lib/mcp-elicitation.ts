@@ -22,6 +22,7 @@ type Decision = 'granted' | 'denied'
 // Per-run state, keyed by context identity. WeakMap entries are released when the
 // run's context is garbage-collected, so there is no manual cleanup and no leak.
 let runGrants = new WeakMap<McpRequestContext, Map<string, Decision>>()
+
 let progressCounters = new WeakMap<McpRequestContext, number>()
 
 // Test-only: swap in fresh state. Real runs never need this (each run has a fresh context).
@@ -31,24 +32,12 @@ export function __resetRunStateForTests(): void {
 }
 
 /**
- * Ask the human whether sandbox code may write to `slug`, once per run per source.
- * Returns true if the write may proceed.
+ * Ask the human to approve an action once per run, keyed by `resourceKey` (e.g. `src:sonarr`).
+ * Returns true if it may proceed.
  *
- * - Cached: the first mutating call to a source prompts; later calls reuse the decision.
+ * - Cached: the first call for a key prompts; later calls in the run reuse the decision.
  * - Fail open: a client with no elicitation support is allowed through, with a one-time warning.
  * - Denied on decline, timeout, or cancellation.
- */
-export interface ConfirmOptions {
-  /**
-   * When the client cannot elicit: `false` (default) allows the action with a warning
-   * (HTTP writes); `true` blocks it (SSH — too high-stakes to run unattended).
-   */
-  failClosed?: boolean
-}
-
-/**
- * Ask the human to approve an action once per run, keyed by `resourceKey` (e.g. `src:sonarr`
- * or `host:nas`). Returns true if it may proceed. Decision is cached for the run.
  */
 export async function confirmAction(
   context: McpRequestContext,
@@ -56,26 +45,27 @@ export async function confirmAction(
   promptMessage: string,
   clientSupportsElicitation: boolean,
   warn: (message: string) => void,
-  options: ConfirmOptions = {},
 ): Promise<boolean> {
   let grants = runGrants.get(context)
+
   if (!grants) {
     grants = new Map()
     runGrants.set(context, grants)
   }
 
   const cached = grants.get(resourceKey)
+
   if (cached) return cached === 'granted'
 
   if (!clientSupportsElicitation) {
-    const failClosed = options.failClosed ?? false
-    warn(`${failClosed ? 'blocked' : 'unconfirmed'} action on ${resourceKey} — client has no elicitation support`)
-    const decision: Decision = failClosed ? 'denied' : 'granted'
-    grants.set(resourceKey, decision)
-    return decision === 'granted'
+    warn(`unconfirmed action on ${resourceKey} — client has no elicitation support`)
+    grants.set(resourceKey, 'granted')
+
+    return true
   }
 
   let decision: Decision = 'denied'
+
   try {
     const result = await context.sendRequest(
       {
@@ -98,6 +88,7 @@ export async function confirmAction(
       ElicitResultSchema,
       { timeout: ELICITATION_TIMEOUT_MS, signal: context.signal },
     )
+
     if (result.action === 'accept' && result.content?.approve === true) {
       decision = 'granted'
     }
@@ -107,6 +98,7 @@ export async function confirmAction(
   }
 
   grants.set(resourceKey, decision)
+
   return decision === 'granted'
 }
 
@@ -125,7 +117,6 @@ export function confirmWrite(
     `Allow writes to "${slug}" for this execution? Triggered by ${method} ${path}.`,
     clientSupportsElicitation,
     warn,
-    { failClosed: false },
   )
 }
 
@@ -136,6 +127,7 @@ export function confirmWrite(
  */
 export function emitProgress(context: McpRequestContext, label: string): void {
   const progressToken = context._meta?.progressToken
+
   if (progressToken === undefined) return
 
   const next = (progressCounters.get(context) ?? 0) + 1

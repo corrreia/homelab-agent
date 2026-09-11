@@ -1,12 +1,10 @@
+/* eslint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion --
+ * These predate the anti-slop lint: the fakes cast partial MCP contexts. The only change here since
+ * then removes the SSH fail-closed tests, so they are left as they were.
+ */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  isMutatingMethod,
-  confirmWrite,
-  confirmAction,
-  emitProgress,
-  __resetRunStateForTests,
-} from '../src/lib/mcp-elicitation.ts'
+import { isMutatingMethod, confirmWrite, emitProgress, __resetRunStateForTests } from '../src/lib/mcp-elicitation.ts'
 
 // A stand-in for RequestHandlerExtra. `sendRequest` / `sendNotification` are stubbed
 // so we can assert what the host tried to send the client. Every call within one
@@ -19,24 +17,29 @@ function makeContext(opts: {
 }) {
   const sentRequests: Array<{ method: string; params: unknown }> = []
   const notifications: Array<{ method: string; params: unknown }> = []
+
   const context = {
     signal: new AbortController().signal,
     _meta: opts.progressToken === undefined ? undefined : { progressToken: opts.progressToken },
     requestId: 1,
     sendRequest: async (req: { method: string; params: unknown }) => {
       sentRequests.push(req)
+
       if (opts.elicitThrows) throw new Error('timeout')
+
       return opts.elicitReply ?? { action: 'decline' }
     },
     sendNotification: async (n: { method: string; params: unknown }) => {
       notifications.push(n)
     },
   }
+
   return { context, sentRequests, notifications }
 }
 
 test('isMutatingMethod flags writes, not reads', () => {
   for (const m of ['POST', 'put', 'Patch', 'DELETE']) assert.equal(isMutatingMethod(m), true, m)
+
   for (const m of ['GET', 'head', 'OPTIONS']) assert.equal(isMutatingMethod(m), false, m)
 })
 
@@ -90,28 +93,6 @@ test('no elicitation support: fail open, warn once', async () => {
   assert.equal(second, true)
   assert.equal(sentRequests.length, 0, 'never prompts a client that cannot elicit')
   assert.equal(warnings.length, 1, 'warns once per source per run')
-})
-
-test('confirmAction failClosed: no elicitation support → blocked (denied), warned', async () => {
-  __resetRunStateForTests()
-  const warnings: string[] = []
-  const { context, sentRequests } = makeContext({})
-  const allowed = await confirmAction(context as never, 'host:nas', 'Allow?', false, (m) => warnings.push(m), {
-    failClosed: true,
-  })
-  assert.equal(allowed, false, 'SSH fails closed when the client cannot elicit')
-  assert.equal(sentRequests.length, 0)
-  assert.match(warnings[0]!, /blocked/)
-})
-
-test('confirmAction failClosed with elicitation: approve grants, cached per resourceKey', async () => {
-  __resetRunStateForTests()
-  const { context, sentRequests } = makeContext({ elicitReply: { action: 'accept', content: { approve: true } } })
-  const first = await confirmAction(context as never, 'host:nas', 'Allow?', true, () => {}, { failClosed: true })
-  const second = await confirmAction(context as never, 'host:nas', 'Allow?', true, () => {}, { failClosed: true })
-  assert.equal(first, true)
-  assert.equal(second, true)
-  assert.equal(sentRequests.length, 1, 'once per run per host')
 })
 
 test('emitProgress sends a notification only when the client supplied a progressToken', async () => {

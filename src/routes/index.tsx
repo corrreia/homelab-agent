@@ -2,20 +2,10 @@ import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { ConfirmStrip } from '../components/ConfirmStrip'
-import { HostsSection } from '../components/HostsSection'
 import { McpBar } from '../components/McpBar'
 import { SectionHeader } from '../components/SectionHeader'
+import { Switch } from '../components/Switch'
 import { type Source } from '../lib/config'
-import {
-  createHost as repoCreateHost,
-  deleteHost as repoDeleteHost,
-  endpointOf,
-  ensureAgentIdentity,
-  forgetHostKey as repoForgetHostKey,
-  getHost,
-  listHosts,
-  type HostInput,
-} from '../lib/hosts-repo'
 import { ensureMergedSpec, getErrors } from '../lib/mcp-server'
 import { requireCurrentSession } from '../lib/require-auth'
 import { suggestSlug } from '../lib/slug'
@@ -23,9 +13,9 @@ import {
   addSource as repoAddSource,
   deleteSource as repoDeleteSource,
   getPublicSources as repoGetPublicSources,
+  setSourceEnabled as repoSetSourceEnabled,
   sourceExists,
 } from '../lib/sources-repo'
-import { testHostConnection } from '../lib/ssh'
 import { templateAuth, templates, type ServiceTemplate } from '../lib/templates'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../lib/test-connection'
 import { colors, fonts } from '../styles'
@@ -36,12 +26,9 @@ const getHomeData = createServerFn({ method: 'GET' }).handler(async () => {
   // SAFETY: the merged document is an OpenAPI 3 object, so `paths` is its path map when present.
   // eslint-disable-next-line anti-slop/no-unsafe-dictionary-type -- only the key count is read, never a value
   const pathCount = merged ? Object.keys((merged.spec.paths as Record<string, unknown>) ?? {}).length : 0
-  const { publicKey } = await ensureAgentIdentity() // generate the agent key on first visit
 
   return {
     sources: await repoGetPublicSources(),
-    hosts: await listHosts(),
-    publicKey,
     errors: getErrors(),
     pathCount,
   }
@@ -66,28 +53,12 @@ const deleteSource = createServerFn({ method: 'POST' }).handler(async ({ data }:
   return repoGetPublicSources()
 })
 
-const addHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: HostInput }) => {
-  await requireCurrentSession()
-  await repoCreateHost(data)
-})
-
-const removeHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
-  await requireCurrentSession()
-  await repoDeleteHost(data.slug)
-})
-
-const forgetKey = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
-  await requireCurrentSession()
-  const host = await getHost(data.slug)
-
-  if (host) await repoForgetHostKey(endpointOf(host))
-})
-
-const testHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
-  await requireCurrentSession()
-
-  return testHostConnection(data.slug)
-})
+const setSourceEnabled = createServerFn({ method: 'POST' }).handler(
+  async ({ data }: { data: { slug: string; enabled: boolean } }) => {
+    await requireCurrentSession()
+    await repoSetSourceEnabled(data.slug, data.enabled)
+  },
+)
 
 const testConnection = createServerFn({ method: 'POST' }).handler(
   async ({
@@ -118,12 +89,13 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { sources, errors, pathCount, hosts, publicKey } = Route.useLoaderData()
+  const { sources, errors, pathCount } = Route.useLoaderData()
   const router = useRouter()
   const [activeTemplate, setActiveTemplate] = useState<ServiceTemplate | null>(null)
   const [showManual, setShowManual] = useState(false)
   const [addingService, setAddingService] = useState(sources.length === 0)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [toggling, setToggling] = useState<string | null>(null)
 
   /** Re-run the loader so counts, endpoint totals and pin state all stay in step. */
   const refresh = () => router.invalidate()
@@ -141,9 +113,20 @@ function HomePage() {
     await refresh()
   }
 
+  async function toggleSource(slug: string, enabled: boolean) {
+    setToggling(slug)
+
+    try {
+      await setSourceEnabled({ data: { slug, enabled } })
+      await refresh()
+    } finally {
+      setToggling(null)
+    }
+  }
+
   return (
     <div>
-      <McpBar sourceCount={sources.length} pathCount={pathCount} hostCount={hosts.length} errors={errors} />
+      <McpBar sourceCount={sources.filter((s) => s.enabled).length} pathCount={pathCount} errors={errors} />
 
       <section style={{ marginBottom: '2.5rem' }}>
         <SectionHeader
@@ -181,10 +164,16 @@ function HomePage() {
                     <img
                       src={template.logo}
                       alt=""
-                      style={{ width: 24, height: 24, borderRadius: '4px', flexShrink: 0 }}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '4px',
+                        flexShrink: 0,
+                        opacity: source.enabled ? 1 : 0.4,
+                      }}
                     />
                   )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, opacity: source.enabled ? 1 : 0.4 }}>
                     <Link
                       to="/sources/$slug"
                       params={{ slug: source.slug }}
@@ -223,6 +212,14 @@ function HomePage() {
                     />
                   ) : (
                     <>
+                      <Switch
+                        checked={source.enabled === true}
+                        label={
+                          source.enabled ? `The agent can use ${source.slug}` : `The agent cannot use ${source.slug}`
+                        }
+                        busy={toggling === source.slug}
+                        onChange={(next) => void toggleSource(source.slug, next)}
+                      />
                       <span
                         style={{
                           fontSize: '0.7rem',
@@ -358,30 +355,6 @@ function HomePage() {
             </>
           ))}
       </section>
-
-      <HostsSection
-        hosts={hosts}
-        publicKey={publicKey}
-        onAdd={async (input) => {
-          await addHost({ data: input })
-          await refresh()
-        }}
-        onRemove={async (slug) => {
-          await removeHost({ data: { slug } })
-          await refresh()
-        }}
-        onForgetKey={async (slug) => {
-          await forgetKey({ data: { slug } })
-          await refresh()
-        }}
-        onTest={async (slug) => {
-          const result = await testHost({ data: { slug } })
-
-          await refresh() // a first successful test pins the host key
-
-          return result
-        }}
-      />
     </div>
   )
 }
