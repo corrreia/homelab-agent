@@ -82,7 +82,7 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 - **Storage:** Drizzle + `better-sqlite3` at `data/app.db`. Schema in `src/db/schema.ts`, migrations in `migrations/` (generate with `pnpm db:generate`, apply with `pnpm db:migrate`). Migrations live outside `data/` so that mounting `./data` as a Docker volume doesn't clobber them.
 - **MCP:** `@cloudflare/codemode` exposes two tools (`search`/`execute`) over a merged OpenAPI spec. Entry point: `src/lib/mcp-server.ts`. Executor is `src/lib/quickjs-executor.ts`. Mutating calls (POST/PUT/PATCH/DELETE) from sandbox code are gated behind MCP elicitation (`src/lib/mcp-elicitation.ts`): approval is asked once per run per source; clients without elicitation support fail open with a warning.
 - **Proxy:** `src/lib/proxy.ts` forwards `/api/proxy/:slug/*` to the upstream, injecting creds from the DB. Request headers are allow-listed; response headers are allow-listed too.
-- **SSH host tools:** the agent owns an ed25519 keypair (`agent_identity` singleton, private key encrypted). Hosts are registered in the `/hosts` UI. Six MCP tools (`remote-bash/read/write/edit/glob/grep`, `src/lib/mcp-remote-tools.ts`) run over SSH (`src/lib/ssh.ts`, `ssh2`) with trust-on-first-use host-key pinning. Mutating tools confirm via elicitation and **fail closed** when the client can't elicit. Host management (`host-list/add/remove`, `src/lib/mcp-host-tools.ts`) lets the model maintain its own host list. `src/lib/hosts-repo.ts` is the encryption boundary for the private key (mirror of `sources-repo.ts`). `src/lib/ssh-client.ts` holds the DB-free ssh2 primitives (exec with output cap + kill-on-timeout, atomic SFTP write via `posix-rename@openssh.com`) so they unit-test against an in-process ssh2 server. A source may link to the host it runs on via `sources.hostSlug` (relational FK).
+- **SSH host tools:** the agent owns an ed25519 keypair (`agent_identity` singleton, private key encrypted). Hosts are registered on the home page, alongside sources. Six MCP tools (`remote-bash/read/write/edit/glob/grep`, `src/lib/mcp-remote-tools.ts`) run over SSH (`src/lib/ssh.ts`, `ssh2`) with trust-on-first-use host-key pinning. Mutating tools confirm via elicitation and **fail closed** when the client can't elicit. Host management (`host-list/add/remove`, `src/lib/mcp-host-tools.ts`) lets the model maintain its own host list. `src/lib/hosts-repo.ts` is the encryption boundary for the private key (mirror of `sources-repo.ts`). `src/lib/ssh-client.ts` holds the DB-free ssh2 primitives (exec with output cap + kill-on-timeout, atomic SFTP write via `posix-rename@openssh.com`) so they unit-test against an in-process ssh2 server. A source may link to the host it runs on via `sources.hostSlug` (relational FK).
 - **Sources:** User-added upstream services. Bundled OpenAPI templates live in `specs/`, wired via `src/lib/templates.ts` + `src/lib/bundled-specs.ts`. Custom sources fetch their spec at runtime (`src/lib/source-spec.ts`).
 
 ## Conventions and invariants
@@ -97,6 +97,9 @@ Project-specific context that's easy to get wrong without reading a lot of code.
 - **Paths handed to remote `find`/`grep` go through `safePath`/`--`** (`src/lib/ssh-helpers.ts`) — a leading `-` would otherwise become a `find` action such as `-delete`, on an unconfirmed tool.
 - **No RBAC by design.** Any authenticated user is effectively admin. Don't add role checks unless the product changes.
 - **Styling:** design tokens live in `src/styles.ts`. No CSS-in-JS library; inline `style={{...}}` is the project's pattern. Match it.
+- **One page.** Services and hosts both live on `/` (`src/routes/index.tsx`); `/sources/$slug` is the only sub-page. After any mutation call `router.invalidate()` rather than reloading — counts, endpoint totals and key-pin state all come from the one loader.
+- **No browser dialogs** (`alert`/`confirm`/`prompt`) — they block the page, can't be styled, and browsers let users suppress them. Destructive actions use the inline two-step `ConfirmStrip` (`src/components/ConfirmStrip.tsx`).
+- **The agent SSH identity has no rotate path by design.** Replacing it would break auth on every host at once; deleting the `agent_identity` row by hand is the deliberate escape hatch.
 
 ## Common commands
 
@@ -135,7 +138,11 @@ Typecheck: `pnpm exec tsc --noEmit`. There are pre-existing TS errors in `src/ro
 | `src/lib/ssh-helpers.ts` | Pure SSH helpers (line format, edit, find/grep, TOFU verdict) |
 | `src/lib/ssh-keys.ts` | ed25519 agent keypair generation |
 | `src/lib/hosts-repo.ts` | Host CRUD + agent-key encryption boundary |
-| `src/routes/hosts.tsx` | /hosts UI: SSH identity + host management |
+| `src/routes/index.tsx` | The whole UI: MCP bar, Services + Hosts sections, add-service forms |
+| `src/routes/hosts.tsx` | Redirect to `/` (hosts moved onto the home page) |
+| `src/components/McpBar.tsx` | Counts + the MCP endpoint URL and "copy prompt" affordance |
+| `src/components/HostsSection.tsx` | Hosts list, add form, agent public key |
+| `src/components/ConfirmStrip.tsx` | Inline two-step confirm for destructive UI actions |
 | `src/lib/quickjs-executor.ts` | QuickJS-based Code Mode executor |
 | `src/lib/spec-merger.ts` | Combine per-source specs into one |
 | `src/lib/templates.ts` | Built-in source templates |

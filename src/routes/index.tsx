@@ -1,7 +1,21 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+import { ConfirmStrip } from '../components/ConfirmStrip'
+import { HostsSection } from '../components/HostsSection'
+import { McpBar } from '../components/McpBar'
+import { SectionHeader } from '../components/SectionHeader'
 import { type Source } from '../lib/config'
+import {
+  createHost as repoCreateHost,
+  deleteHost as repoDeleteHost,
+  endpointOf,
+  ensureAgentIdentity,
+  forgetHostKey as repoForgetHostKey,
+  getHost,
+  listHosts,
+  type HostInput,
+} from '../lib/hosts-repo'
 import { ensureMergedSpec, getErrors } from '../lib/mcp-server'
 import { requireCurrentSession } from '../lib/require-auth'
 import {
@@ -10,6 +24,7 @@ import {
   getPublicSources as repoGetPublicSources,
   sourceExists,
 } from '../lib/sources-repo'
+import { testHostConnection } from '../lib/ssh'
 import { templates, type ServiceTemplate } from '../lib/templates'
 import { templateTestRequest, testServiceConnection, type TestResult } from '../lib/test-connection'
 import { colors, fonts } from '../styles'
@@ -17,35 +32,69 @@ import { colors, fonts } from '../styles'
 const getHomeData = createServerFn({ method: 'GET' }).handler(async () => {
   await requireCurrentSession()
   const merged = await ensureMergedSpec()
+  // SAFETY: the merged document is an OpenAPI 3 object, so `paths` is its path map when present.
+  // eslint-disable-next-line anti-slop/no-unsafe-dictionary-type -- only the key count is read, never a value
   const pathCount = merged ? Object.keys((merged.spec.paths as Record<string, unknown>) ?? {}).length : 0
+  const { publicKey } = await ensureAgentIdentity() // generate the agent key on first visit
+
   return {
     sources: await repoGetPublicSources(),
+    hosts: await listHosts(),
+    publicKey,
     errors: getErrors(),
     pathCount,
-    mcpPath: '/mcp',
   }
 })
 
 const addSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: Source }) => {
   await requireCurrentSession()
+
   if (await sourceExists(data.slug)) {
     throw new Error(`Source "${data.slug}" already exists`)
   }
+
   await repoAddSource(data)
+
   return repoGetPublicSources()
 })
 
 const deleteSource = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
   await requireCurrentSession()
   await repoDeleteSource(data.slug)
+
   return repoGetPublicSources()
+})
+
+const addHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: HostInput }) => {
+  await requireCurrentSession()
+  await repoCreateHost(data)
+})
+
+const removeHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
+  await requireCurrentSession()
+  await repoDeleteHost(data.slug)
+})
+
+const forgetKey = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
+  await requireCurrentSession()
+  const host = await getHost(data.slug)
+
+  if (host) await repoForgetHostKey(endpointOf(host))
+})
+
+const testHost = createServerFn({ method: 'POST' }).handler(async ({ data }: { data: { slug: string } }) => {
+  await requireCurrentSession()
+
+  return testHostConnection(data.slug)
 })
 
 const testConnection = createServerFn({ method: 'POST' }).handler(
   async ({ data }: { data: { templateId: string; baseUrl: string; token: string; allowInvalidTls?: boolean } }) => {
     await requireCurrentSession()
     const template = templates.find((t) => t.id === data.templateId)
+
     if (!template) throw new Error('Unknown template')
+
     return testServiceConnection(templateTestRequest(template, data.baseUrl, data.token, data.allowInvalidTls))
   },
 )
@@ -56,31 +105,52 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { sources, errors, pathCount, mcpPath } = Route.useLoaderData()
+  const { sources, errors, pathCount, hosts, publicKey } = Route.useLoaderData()
+  const router = useRouter()
   const [activeTemplate, setActiveTemplate] = useState<ServiceTemplate | null>(null)
   const [showManual, setShowManual] = useState(false)
+  const [addingService, setAddingService] = useState(sources.length === 0)
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+
+  /** Re-run the loader so counts, endpoint totals and pin state all stay in step. */
+  const refresh = () => router.invalidate()
+  // With no services the picker is the whole section, so it stays open regardless of the toggle.
+  const showAddService = addingService || sources.length === 0
+
+  function closeAddService() {
+    setActiveTemplate(null)
+    setShowManual(false)
+    setAddingService(false)
+  }
+
+  async function onServiceAdded() {
+    closeAddService()
+    await refresh()
+  }
 
   return (
     <div>
-      <StatusBar sourceCount={sources.length} pathCount={pathCount} errors={errors} mcpPath={mcpPath} />
+      <McpBar sourceCount={sources.length} pathCount={pathCount} hostCount={hosts.length} errors={errors} />
 
-      {/* Active sources */}
-      {sources.length > 0 && (
-        <section style={{ marginBottom: '2.5rem' }}>
-          <h2
-            style={{
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: colors.textDim,
-              marginBottom: '0.75rem',
-            }}
-          >
-            Active Services
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <section style={{ marginBottom: '2.5rem' }}>
+        <SectionHeader
+          title="Services"
+          count={sources.length}
+          action={
+            sources.length > 0
+              ? {
+                  label: addingService ? 'Cancel' : '+ Add service',
+                  onClick: () => (addingService ? closeAddService() : setAddingService(true)),
+                }
+              : null
+          }
+        />
+
+        {sources.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
             {sources.map((source) => {
               const template = templates.find((t) => t.id === source.kind)
+
               return (
                 <div
                   key={source.slug}
@@ -127,215 +197,191 @@ function HomePage() {
                       {source.baseUrl}
                     </div>
                   </div>
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontFamily: fonts.mono,
-                      color: colors.textDim,
-                      background: colors.bgInput,
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    {source.auth.type}
-                  </span>
-                  <button
-                    onClick={async () => {
-                      if (confirm(`Remove "${source.slug}"?`)) {
+                  {pendingRemove === source.slug ? (
+                    <ConfirmStrip
+                      question={`Remove "${source.slug}"?`}
+                      confirmLabel="Remove"
+                      onConfirm={async () => {
+                        setPendingRemove(null)
                         await deleteSource({ data: { slug: source.slug } })
-                        window.location.reload()
-                      }
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: colors.textDim,
-                      cursor: 'pointer',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    Remove
-                  </button>
+                        await refresh()
+                      }}
+                      onCancel={() => setPendingRemove(null)}
+                    />
+                  ) : (
+                    <>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          fontFamily: fonts.mono,
+                          color: colors.textDim,
+                          background: colors.bgInput,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        {source.auth.type}
+                      </span>
+                      <button
+                        onClick={() => setPendingRemove(source.slug)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: colors.textDim,
+                          cursor: 'pointer',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.8rem',
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </>
+                  )}
                 </div>
               )
             })}
           </div>
-        </section>
-      )}
+        )}
 
-      {/* Template picker or form */}
-      {activeTemplate ? (
-        <TemplateForm
-          template={activeTemplate}
-          existingSlugs={sources.map((s) => s.slug)}
-          onCancel={() => setActiveTemplate(null)}
-        />
-      ) : showManual ? (
-        <ManualForm existingSlugs={sources.map((s) => s.slug)} onCancel={() => setShowManual(false)} />
-      ) : (
-        <section>
-          <h2
-            style={{
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: colors.textDim,
-              marginBottom: '0.75rem',
-            }}
-          >
-            Add Service
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: '0.5rem',
-              marginBottom: '1rem',
-            }}
-          >
-            {templates.map((t) => {
-              const instanceCount = sources.filter((s) => s.kind === t.id).length
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTemplate(t)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    background: colors.bgCard,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    color: colors.text,
-                    fontFamily: fonts.body,
-                    transition: 'border-color 0.15s, background 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    {
-                      e.currentTarget.style.borderColor = t.color
-                      e.currentTarget.style.background = colors.bgHover
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = colors.border
-                    e.currentTarget.style.background = colors.bgCard
-                  }}
-                >
-                  <img
-                    src={t.logo}
-                    alt=""
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '6px',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
-                      {t.name}
-                      {instanceCount > 0 && (
-                        <span style={{ marginLeft: '0.4rem', color: colors.textDim, fontSize: '0.75rem' }}>
-                          · {instanceCount}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: colors.textDim }}>{t.description}</div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-          <button
-            onClick={() => setShowManual(true)}
-            style={{
-              background: 'none',
-              border: `1px dashed ${colors.border}`,
-              color: colors.textDim,
-              padding: '0.6rem 1rem',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontFamily: fonts.body,
-              fontSize: '0.85rem',
-            }}
-          >
-            + Custom OpenAPI source
-          </button>
-        </section>
-      )}
-    </div>
-  )
-}
+        {showAddService &&
+          (activeTemplate ? (
+            <TemplateForm
+              template={activeTemplate}
+              existingSlugs={sources.map((s) => s.slug)}
+              onCancel={() => setActiveTemplate(null)}
+              onAdded={onServiceAdded}
+            />
+          ) : showManual ? (
+            <ManualForm
+              existingSlugs={sources.map((s) => s.slug)}
+              onCancel={() => setShowManual(false)}
+              onAdded={onServiceAdded}
+            />
+          ) : (
+            <>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  // Every card the same height, sized to the tallest (some descriptions wrap).
+                  gridAutoRows: '1fr',
+                  gap: '0.5rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                {templates.map((t) => {
+                  const instanceCount = sources.filter((s) => s.kind === t.id).length
 
-function StatusBar({
-  sourceCount,
-  pathCount,
-  errors,
-  mcpPath,
-}: {
-  sourceCount: number
-  pathCount: number
-  errors: Array<{ slug: string; error: string }>
-  mcpPath: string
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        padding: '0.5rem 0.85rem',
-        marginBottom: '1.5rem',
-        background: colors.bgCard,
-        border: `1px solid ${colors.border}`,
-        borderRadius: '8px',
-        fontSize: '0.8rem',
-      }}
-    >
-      <span style={{ color: colors.textMuted }}>
-        <strong style={{ color: colors.text }}>{sourceCount}</strong> {sourceCount === 1 ? 'source' : 'sources'}
-      </span>
-      <span style={{ color: colors.textMuted }}>
-        <strong style={{ color: colors.text }}>{pathCount}</strong> {pathCount === 1 ? 'endpoint' : 'endpoints'}
-      </span>
-      {errors.length > 0 && (
-        <span
-          title={errors.map((e) => `${e.slug}: ${e.error}`).join('\n')}
-          style={{ color: colors.error, cursor: 'help' }}
-        >
-          {errors.length} {errors.length === 1 ? 'error' : 'errors'}
-        </span>
-      )}
-      <span style={{ flex: 1 }} />
-      <span style={{ color: colors.textDim, fontFamily: fonts.mono, fontSize: '0.75rem' }}>MCP</span>
-      <code
-        style={{
-          fontFamily: fonts.mono,
-          fontSize: '0.75rem',
-          color: colors.textMuted,
-          background: colors.bgInput,
-          padding: '2px 8px',
-          borderRadius: '4px',
-          border: `1px solid ${colors.border}`,
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveTemplate(t)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
+                        background: colors.bgCard,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        color: colors.text,
+                        fontFamily: fonts.body,
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        {
+                          e.currentTarget.style.borderColor = t.color
+                          e.currentTarget.style.background = colors.bgHover
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = colors.border
+                        e.currentTarget.style.background = colors.bgCard
+                      }}
+                    >
+                      <img
+                        src={t.logo}
+                        alt=""
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '6px',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>
+                          {t.name}
+                          {instanceCount > 0 && (
+                            <span style={{ marginLeft: '0.4rem', color: colors.textDim, fontSize: '0.75rem' }}>
+                              · {instanceCount}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: colors.textDim }}>{t.description}</div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => setShowManual(true)}
+                style={{
+                  background: 'none',
+                  border: `1px dashed ${colors.border}`,
+                  color: colors.textDim,
+                  padding: '0.6rem 1rem',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontFamily: fonts.body,
+                  fontSize: '0.85rem',
+                }}
+              >
+                + Custom OpenAPI source
+              </button>
+            </>
+          ))}
+      </section>
+
+      <HostsSection
+        hosts={hosts}
+        publicKey={publicKey}
+        onAdd={async (input) => {
+          await addHost({ data: input })
+          await refresh()
         }}
-      >
-        {mcpPath}
-      </code>
+        onRemove={async (slug) => {
+          await removeHost({ data: { slug } })
+          await refresh()
+        }}
+        onForgetKey={async (slug) => {
+          await forgetKey({ data: { slug } })
+          await refresh()
+        }}
+        onTest={async (slug) => {
+          const result = await testHost({ data: { slug } })
+
+          await refresh() // a first successful test pins the host key
+
+          return result
+        }}
+      />
     </div>
   )
 }
 
 function suggestSlug(base: string, existing: string[]): string {
   if (!existing.includes(base)) return base
+
   for (let i = 2; i < 100; i++) {
     const candidate = `${base}-${i}`
+
     if (!existing.includes(candidate)) return candidate
   }
+
   return base
 }
 
@@ -343,10 +389,12 @@ function TemplateForm({
   template,
   existingSlugs,
   onCancel,
+  onAdded,
 }: {
   template: ServiceTemplate
   existingSlugs: string[]
   onCancel: () => void
+  onAdded: () => Promise<void>
 }) {
   const [baseUrl, setBaseUrl] = useState('')
   const [token, setToken] = useState('')
@@ -361,14 +409,17 @@ function TemplateForm({
     if (!baseUrl) return
     setTesting(true)
     setTestResult(null)
+
     try {
       const result = await testConnection({
         data: { templateId: template.id, baseUrl: baseUrl.replace(/\/+$/, ''), token, allowInvalidTls },
       })
+
       setTestResult(result)
     } catch {
       setTestResult({ ok: false, message: 'Test failed unexpectedly' })
     }
+
     setTesting(false)
   }
 
@@ -378,6 +429,7 @@ function TemplateForm({
 
     if (existingSlugs.includes(slug)) {
       setError(`Slug "${slug}" already in use`)
+
       return
     }
 
@@ -403,7 +455,7 @@ function TemplateForm({
 
     try {
       await addSource({ data: source })
-      window.location.reload()
+      await onAdded()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -547,12 +599,22 @@ function TemplateForm({
   )
 }
 
-function ManualForm({ existingSlugs, onCancel }: { existingSlugs: string[]; onCancel: () => void }) {
+function ManualForm({
+  existingSlugs,
+  onCancel,
+  onAdded,
+}: {
+  existingSlugs: string[]
+  onCancel: () => void
+  onAdded: () => Promise<void>
+}) {
   const [slug, setSlug] = useState('')
   const [specUrl, setSpecUrl] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [allowInvalidTls, setAllowInvalidTls] = useState(false)
   const [authType, setAuthType] = useState<'none' | 'bearer' | 'header'>('none')
+  // SAFETY: the <option> elements rendered below are exactly these three values.
+  const selectAuthType = (value: string) => setAuthType(value as typeof authType)
   const [token, setToken] = useState('')
   const [headerName, setHeaderName] = useState('')
   const [headerValue, setHeaderValue] = useState('')
@@ -564,6 +626,7 @@ function ManualForm({ existingSlugs, onCancel }: { existingSlugs: string[]; onCa
 
     if (existingSlugs.includes(slug)) {
       setError(`Slug "${slug}" already in use`)
+
       return
     }
 
@@ -583,7 +646,7 @@ function ManualForm({ existingSlugs, onCancel }: { existingSlugs: string[]; onCa
 
     try {
       await addSource({ data: source })
-      window.location.reload()
+      await onAdded()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -654,7 +717,7 @@ function ManualForm({ existingSlugs, onCancel }: { existingSlugs: string[]; onCa
           </label>
         </div>
         <FormField label="Auth Type">
-          <select value={authType} onChange={(e) => setAuthType(e.target.value as typeof authType)} style={inputStyle}>
+          <select value={authType} onChange={(e) => selectAuthType(e.target.value)} style={inputStyle}>
             <option value="none">None</option>
             <option value="bearer">Bearer Token</option>
             <option value="header">Custom Header</option>

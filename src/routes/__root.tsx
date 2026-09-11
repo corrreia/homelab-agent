@@ -104,7 +104,10 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
             height: '56px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <Link
+            to="/"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: colors.text, textDecoration: 'none' }}
+          >
             <Logo size={22} style={{ color: colors.accent, display: 'block' }} />
             <span style={{ fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.02em' }}>homelab-agent</span>
             <span
@@ -120,32 +123,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
             >
               MCP
             </span>
-          </div>
-          <nav style={{ display: 'flex', gap: '0.25rem' }}>
-            {(
-              [
-                { to: '/', label: 'Services' },
-                { to: '/hosts', label: 'Hosts' },
-              ] as const
-            ).map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                activeOptions={{ exact: true }}
-                style={{
-                  color: colors.textMuted,
-                  textDecoration: 'none',
-                  padding: '0.4rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: 500,
-                }}
-                activeProps={{ style: { color: colors.text, background: colors.bgCard } }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          </Link>
         </header>
         <main style={{ maxWidth: '960px', margin: '0 auto', padding: '2rem' }}>{children}</main>
         <Scripts />
