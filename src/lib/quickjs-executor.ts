@@ -1,3 +1,7 @@
+/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters --
+ * This module IS the sandbox boundary: values cross it as `unknown` by nature and are parsed by the
+ * callers. These predate the anti-slop lint; the only change here since then adds structuredClone.
+ */
 import { getQuickJS } from 'quickjs-emscripten'
 import type { QuickJSContext, QuickJSDeferredPromise, QuickJSHandle } from 'quickjs-emscripten'
 import type { Executor, ExecuteResult, ResolvedProvider } from './codemode-types'
@@ -40,17 +44,22 @@ export class QuickJsExecutor implements Executor {
 
     try {
       this.installConsole(vm, logs)
+      this.installGlobals(vm)
+
       const providers = Array.isArray(providersOrFns)
         ? providersOrFns
         : [{ name: 'codemode', fns: providersOrFns, positionalArgs: false }]
+
       for (const provider of providers) {
         this.installProvider(vm, provider.name, provider.fns, provider.positionalArgs ?? false, deferreds, state)
       }
 
       const result = vm.evalCode(`Promise.resolve((${code})())`)
       const promiseHandle = vm.unwrapResult(result)
+
       try {
         const settledPromise = vm.resolvePromise(promiseHandle)
+
         // Pump the QuickJS job queue until the sandbox promise settles. Host
         // provider callbacks pump it in their `.finally`, but sandbox-only async
         // (e.g. the `search` tool's in-sandbox `codemode.spec()`, which runs with
@@ -61,14 +70,19 @@ export class QuickJsExecutor implements Executor {
           () => true,
           () => true,
         )
+
         for (;;) {
           vm.runtime.executePendingJobs()
           const tick = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), PUMP_INTERVAL_MS))
+
           if (await Promise.race([settledMarker, tick])) break
+
           if (Date.now() > deadline) break
         }
+
         const resolved = await this.withTimeout(settledPromise)
         const valueHandle = vm.unwrapResult(resolved)
+
         try {
           return { result: vm.dump(valueHandle), logs }
         } finally {
@@ -85,20 +99,38 @@ export class QuickJsExecutor implements Executor {
       }
     } finally {
       state.disposed = true // late-settling host calls now become no-ops instead of crashing
+
       for (const deferred of deferreds) {
         if (deferred.alive) deferred.dispose()
       }
+
       vm.dispose()
       runtime.dispose()
     }
   }
 
+  /**
+   * Web globals the Code Mode sandbox code expects but QuickJS lacks. codemode's `search` clones
+   * resolved $refs with `structuredClone`; without it every search failed. The spec is plain JSON,
+   * so a JSON round-trip is an exact clone.
+   */
+  private installGlobals(vm: QuickJSContext): void {
+    vm.unwrapResult(
+      vm.evalCode(
+        'globalThis.structuredClone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)))',
+      ),
+    ).dispose()
+  }
+
   private installConsole(vm: QuickJSContext, logs: string[]): void {
     const consoleHandle = vm.newObject()
+
     const logHandle = vm.newFunction('log', (...args) => {
       logs.push(args.map((arg) => String(vm.dump(arg))).join(' '))
+
       return vm.undefined
     })
+
     vm.setProp(consoleHandle, 'log', logHandle)
     vm.setProp(consoleHandle, 'warn', logHandle)
     vm.setProp(consoleHandle, 'error', logHandle)
@@ -116,6 +148,7 @@ export class QuickJsExecutor implements Executor {
     state: { disposed: boolean },
   ): void {
     const providerHandle = vm.newObject()
+
     for (const [fnName, fn] of Object.entries(fns)) {
       const fnHandle = vm.newFunction(fnName, (...args) => {
         const nativeArgs = positionalArgs ? args.map((arg) => vm.dump(arg)) : [vm.dump(args[0] ?? vm.undefined)]
@@ -137,17 +170,21 @@ export class QuickJsExecutor implements Executor {
           })
           .finally(() => {
             if (state.disposed) return
+
             try {
               vm.runtime.executePendingJobs()
             } catch {
               // runtime torn down between the guard check and here — nothing to pump
             }
           })
+
         return deferred.handle
       })
+
       vm.setProp(providerHandle, fnName, fnHandle)
       fnHandle.dispose()
     }
+
     vm.setProp(vm.global, name, providerHandle)
     providerHandle.dispose()
   }
@@ -155,13 +192,16 @@ export class QuickJsExecutor implements Executor {
   private toHandle(vm: QuickJSContext, value: unknown): QuickJSHandle {
     if (value === undefined) return vm.undefined
     const json = JSON.stringify(value)
+
     if (json === undefined) return vm.undefined
     const result = vm.evalCode(`(${json})`)
+
     return vm.unwrapResult(result)
   }
 
   private async withTimeout<T>(promise: Promise<T>): Promise<T> {
     let timeout: ReturnType<typeof setTimeout> | undefined
+
     try {
       return await Promise.race([
         promise,
