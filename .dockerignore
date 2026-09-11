@@ -6,3 +6,14 @@ docs
 .env
 .env.*
 .deepsec
+
+# The SQLite database holds encrypted source credentials and the agent's SSH private
+# key — it must never be baked into an image layer.
+data
+
+# Repo and tooling that the build never reads.
+.git
+.github
+.husky
+test
+tools
