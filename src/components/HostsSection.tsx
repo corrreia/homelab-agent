@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { copyLabel, useCopy } from '../lib/clipboard'
 import type { Host, HostInput } from '../lib/hosts-repo'
+import { slugForLabel } from '../lib/slug'
 import { colors, fonts } from '../styles'
 import { ConfirmStrip } from './ConfirmStrip'
 import { SectionHeader } from './SectionHeader'
@@ -62,6 +63,8 @@ export function HostsSection({
 }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  // Once the slug has been typed in by hand, stop overwriting it from the label.
+  const [slugEdited, setSlugEdited] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [tests, setTests] = useState<Record<string, HostTest | 'pending'>>({})
@@ -69,19 +72,32 @@ export function HostsSection({
   // With no hosts the form is the whole section, so it stays open regardless of the toggle.
   const showForm = adding || hosts.length === 0
 
+  const takenSlugs = hosts.map((h) => h.slug)
+  const suggestedSlug = slugForLabel(form.label, takenSlugs)
+
+  function editLabel(label: string) {
+    setForm({ ...form, label, slug: slugEdited ? form.slug : slugForLabel(label, takenSlugs) })
+  }
+
+  function editSlug(slug: string) {
+    setSlugEdited(slug.trim() !== '') // clearing it hands control back to the label
+    setForm({ ...form, slug })
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
 
     try {
       await onAdd({
-        slug: form.slug.trim(),
+        slug: form.slug.trim() || suggestedSlug,
         label: form.label.trim() || undefined,
         hostname: form.hostname.trim(),
         port: Number(form.port) || 22,
         username: form.username.trim(),
       })
       setForm(EMPTY_FORM)
+      setSlugEdited(false)
       setAdding(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -203,14 +219,14 @@ export function HostsSection({
             marginBottom: '0.75rem',
           }}
         >
+          <Field label="Label" value={form.label} onChange={editLabel} placeholder="NAS" />
           <Field
             label="Slug"
             value={form.slug}
-            onChange={(v) => setForm({ ...form, slug: v })}
-            placeholder="nas"
-            required
+            onChange={editSlug}
+            placeholder={suggestedSlug || 'nas'}
+            hint="how tools address it"
           />
-          <Field label="Label" value={form.label} onChange={(v) => setForm({ ...form, label: v })} placeholder="NAS" />
           <Field
             label="Hostname / IP"
             value={form.hostname}
@@ -289,10 +305,14 @@ function Field(props: {
   placeholder?: string
   required?: boolean
   width?: number
+  hint?: string
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-      <span style={{ fontSize: '0.7rem', color: colors.textDim }}>{props.label}</span>
+      <span style={{ fontSize: '0.7rem', color: colors.textDim }}>
+        {props.label}
+        {props.hint && <span style={{ marginLeft: '0.35rem', opacity: 0.7 }}>· {props.hint}</span>}
+      </span>
       <input
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}

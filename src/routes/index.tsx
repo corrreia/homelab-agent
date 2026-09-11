@@ -18,6 +18,7 @@ import {
 } from '../lib/hosts-repo'
 import { ensureMergedSpec, getErrors } from '../lib/mcp-server'
 import { requireCurrentSession } from '../lib/require-auth'
+import { suggestSlug } from '../lib/slug'
 import {
   addSource as repoAddSource,
   deleteSource as repoDeleteSource,
@@ -371,18 +372,6 @@ function HomePage() {
       />
     </div>
   )
-}
-
-function suggestSlug(base: string, existing: string[]): string {
-  if (!existing.includes(base)) return base
-
-  for (let i = 2; i < 100; i++) {
-    const candidate = `${base}-${i}`
-
-    if (!existing.includes(candidate)) return candidate
-  }
-
-  return base
 }
 
 function TemplateForm({
