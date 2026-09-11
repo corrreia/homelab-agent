@@ -54,6 +54,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@oxlint/plugins':
+        specifier: 1.60.0
+        version: 1.60.0
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -1062,6 +1065,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@oxlint/plugins@1.60.0':
+    resolution: {integrity: sha512-wxEoVVAS5FQAXiA8jPY+NWTOTKTzbSViMfW7yU5OQ7+f34W0KYfy2iuSLC9o1fiYn5xt3LQLxZBREFJtDlQLRw==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -3265,6 +3272,8 @@ snapshots:
 
   '@oxlint/binding-win32-x64-msvc@1.60.0':
     optional: true
+
+  '@oxlint/plugins@1.60.0': {}
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
